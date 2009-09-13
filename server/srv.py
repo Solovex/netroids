@@ -48,15 +48,15 @@ class server:
      if self.sockety.values().count(self.adres)==0:
       self.handleConnection(self.adres)
       print 'dodalem ',self.adres,' do listy! lista: ',self.sockety
-     print 'data', struct.unpack('4i',self.data)
-     self.typ,self.id,self.arg1,self.arg2=struct.unpack('4i',self.data)
+     #print 'data', struct.unpack('4i',self.data)
+     print "LEN %d" % len(self.data)
+     self.typ,self.id,self.arg1,self.arg2=struct.unpack('4i',self.data[:16])
+
      if self.typ==0:
-        print 'odbieram wielkosc: ',struct.calcsize("%ss%ss"%(self.arg1,self.arg2))
-        self.loginData,self.adres=self.server.recvfrom(1024)
-	print 'logindata: ',self.loginData,self.adres
-        if self.loginData=='':
-         self.handleQuit(self.adres)
-        self.login,self.pwd=struct.unpack("%ss%ss"%(self.arg1,self.arg2),self.loginData)
+	self.login,self.pwd = self.data[16:16+self.arg1], self.data[16+self.arg1:16+self.arg1+self.arg2]
+	if self.login == '' or self.pwd == '':
+		self.handleQuit(self.adres)
+
 	print self.login,self.pwd
         self.handleLogin(self.adres,self.login,self.pwd)
        
@@ -70,14 +70,20 @@ class server:
       print self.id,' mial ping ',self.statki[self.id][8]
       self.statki[self.id][8]=0
       self.server.sendto(struct.pack('4i',3,self.id,self.arg1,self.arg2),self.adres)
-      
+     if self.typ==12:
+      txt = self.data[16:16+self.arg1]
+      print("ID:%d Chat type %d (Len:%d) : %s" % (self.id, self.arg2, self.arg1, txt))
+      self.consoleAdd(self.adres, "Wiem ze wpisales: %s" % txt)
+ 
     if s==sys.stdin:
 	pass
-
+# def handleChat(self, sock, )
  def handleConnection(self,target):
   self.sockety[max(self.sockety.keys())+1]=target
   print 'Nowe polaczenie: ',target
- 
+ def consoleAdd(self, addr, txt, logtype=0):
+  print 'wiem ze dodac do konsoli klienta'
+  self.server.sendto(struct.pack('4i', 12, self.id, len(txt), logtype) + txt, self.adres)
  def handleLogin(self,sock,login,pwd):
   print 'bedzie login'
   if self.accounts.has_key(login):
