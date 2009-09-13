@@ -9,14 +9,14 @@ class weaponManager():
 
 
 class spaceship():
-	def __init__(self,pManager, pos=[300,300],id=0, name=''):
+	def __init__(self,pManager, pos=[300,300],id=0, name='',model=0):
 		self.speed=[0,0]
 		self.acc=[0,0]
 		self.rot=0
 		self.roting=0
 		self.pos=pos
-		self.wire=[[-5,-10],[5,-10],[10,10],[-10,10]]
-		#self.wire=[[-5,-10], [-10, 10], [10,10]]
+		self.wire=[[[-5,-10],[5,-10],[10,10],[-10,10]],
+			  [[-20,-20],[20,-20],[20,20],[-20,20]]][model]
 		self.speedchange=0
 		self.rect=pygame.Rect(-5,-10,10,20)
 		self.rect.size=(15,15)
@@ -144,7 +144,7 @@ class gameThread(Thread):
 			if self.pingtick > 50:
 				#self.ping = [time.time()][0]
 				self.parent.parent.client.send(struct.pack('4i', 3, self.parent.statek.id, self.tick, random.randint(0,65535)))
-				self.pingtick = 0
+				self.pingtick = 0
 			self.parent.particleManager.updateAll()
 			self.zegar.tick(50)
 
@@ -312,6 +312,10 @@ class gameScreen(baseScreen):
 			#if self.parent.client == None:
 			self.statek.speedchange=0.1
 			self.parent.client.send(struct.pack('iiii', 11,self.statek.id,2,1))
+		if event.key == pygame.K_DOWN:
+			#if self.parent.client == None:
+			self.statek.speedchange=-0.1
+			self.parent.client.send(struct.pack('iiii', 11,self.statek.id,2,-1))			
 		if event.key == pygame.K_LEFT:
 			#if self.parent.client == None:
 			self.statek.roting = -0.1
@@ -326,6 +330,10 @@ class gameScreen(baseScreen):
 			#if self.parent.client == None:
 			self.statek.speedchange=0
 			self.parent.client.send(struct.pack('iiii', 11,self.statek.id,2,0))
+		if event.key == pygame.K_DOWN:
+			#if self.parent.client == None:
+			self.statek.speedchange=0
+			self.parent.client.send(struct.pack('iiii', 11,self.statek.id,2,0))			
 		if event.key == pygame.K_LEFT:
 			#if self.parent.client == None:
 			self.statek.roting = 0
@@ -505,12 +513,13 @@ class connectionClass():
 				nick_len = struct.unpack('i', data2[4*8:(4*8)+4])[0]
 				nick = data2[(4*8)+4:(4*8)+4+nick_len]
 				statek = (nick,) + struct.unpack('8f',data2[:4*8])
+				print 'AAAAAAAAaaaaa', rcv[2]
 				
 				if ship_id == self.activeScreen.statek.id:
 					self.activeScreen.statek.name = statek[0]
 				else:
 					self.activeScreen.reading = True
-					self.activeScreen.statki[ship_id]=spaceship(self.activeScreen.particleManager, [statek[1], statek[2]], ship_id, statek[0])
+					self.activeScreen.statki[ship_id]=spaceship(self.activeScreen.particleManager, [statek[1], statek[2]], ship_id, statek[0],rcv[2])
 					self.activeScreen.reading = False
 
 				dl = 12+(4*8)+4+nick_len

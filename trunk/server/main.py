@@ -12,18 +12,33 @@ class server:
   self.server=socket.socket(socket.AF_INET,socket.SOCK_DGRAM)
   self.server.bind(("",int(sys.argv[1])))
 #  self.server.listen(5)
-
+  self.botsAmt=0
   self.sockety={0:sys.stdin,1:self.server}
   self.accounts={'asdf':'asdf',
   		 'qwer':'qwer',
 		 'zxcv':'zxcv'
 		}
-  self.db={'asdf':{'socket':None,'pos':[100,100]},
-  	   'qwer':{'socket':None,'pos':[150,100]},
-	   'zxcv':{'socket':None,'pos':[1500,1500]}
+  self.db={'asdf':{'socket':None,'pos':[100,100],'model':0},
+  	   'qwer':{'socket':None,'pos':[150,100],'model':0},
+	   'zxcv':{'socket':None,'pos':[1500,1500],'model':0},
+	   'bot0':{'socket':None,'pos':[200,220],'model':0},
+	   'bot1':{'socket':None,'pos':[240,330],'model':0},
+	   'bot2':{'socket':None,'pos':[280,440],'model':0},
+	   'bot3':{'socket':None,'pos':[320,550],'model':1},
+	   'bot4':{'socket':None,'pos':[360,660],'model':0},
+	   'bot5':{'socket':None,'pos':[400,770],'model':1},	   	   	   	   	   
 	  }
   self.running=1
   self.statki={}
+  self.makeBots(5)
+  
+ def makeBots(self,howMany):
+  for i in range(howMany):
+   tempId=max(self.sockety.keys())+1
+   self.sockety[tempId]=('0.0.0.%s'%(self.botsAmt+1),0)
+   self.statki[tempId]=['bot%s'%i,[self.db['bot%s'%i]['pos'][0],self.db['bot%s'%i]['pos'][1]],[],[0,0],[0,0],0,0,0,0]
+   self.botsAmt+=1
+    
  def run(self):
   while self.running:
    self.input,self.output,self.exc=select.select([sys.stdin,self.server],[],[],0.1) 
@@ -113,8 +128,10 @@ class server:
    self.updateRelevantSet(i)  
 
  def sendNewObject(self,toWhom,targetId):
-  self.server.sendto(struct.pack("3i8fi%ss"%len(self.statki[targetId][0]),
-    					2, targetId,0, #typ pakietu, id obiektu, id modelu
+  print 'wysylam do: ',self.sockety[toWhom]
+  if self.sockety[toWhom][0][0]!='0':
+   self.server.sendto(struct.pack("3i8fi%ss"%len(self.statki[targetId][0]),
+    					2, targetId,self.db[self.statki[targetId][0]]['model'], #typ pakietu, id obiektu, id modelu
 					self.statki[targetId][1][0],self.statki[targetId][1][1], #pos x,y
 					self.statki[targetId][3][0],self.statki[targetId][3][1], #speed x,y
 					self.statki[targetId][4][0],self.statki[targetId][4][1], #acc x,y
@@ -175,7 +192,7 @@ class updater(threading.Thread):
    time.sleep(0.02)
    for i in self.target.statki.keys():
     self.target.statki[i][8]+=1
-    if self.target.statki[i][8]>250:
+    if self.target.statki[i][8]>250 and self.target.sockety[i][0][0]!='0':
      self.target.handleQuit(self.target.sockety[i])
     else: 
      self.update(i)
@@ -186,24 +203,20 @@ class updater(threading.Thread):
     self.target.statki[whichOne][5]+=self.target.statki[whichOne][6]
     if self.thingsToSend.count([whichOne,5])<1:
       self.thingsToSend+=[[whichOne,5]]
-#    if 1==1: #speedchange(7) - zmienia acc(4->10)
     self.target.statki[whichOne][4][0]=round(self.target.statki[whichOne][7]*math.cos(self.target.statki[whichOne][5]+math.pi/2),2)
     self.target.statki[whichOne][4][1]=round(self.target.statki[whichOne][7]*math.sin(self.target.statki[whichOne][5]+math.pi/2),2)
-    # print 'nowy acc: ',self.target.statki[i][4][0],self.target.statki[i][4][1]
     if self.thingsToSend.count([whichOne,10])<1:    
       self.thingsToSend+=[[whichOne,10]]
     if (self.target.statki[whichOne][4][0]<>0 or self.target.statki[whichOne][4][1]<>0): #acc(4) - zmienia speed (3->9)
      self.target.statki[whichOne][3][0]+=round(self.target.statki[whichOne][4][0],2)
      self.target.statki[whichOne][3][1]+=round(self.target.statki[whichOne][4][1],2)
- #    print 'nowy speed: ',self.target.statki[whichOne][3][0],self.target.statki[whichOne][3][1]     
-    if self.thingsToSend.count([whichOne,9])<1:
+     if self.thingsToSend.count([whichOne,9])<1:
       self.thingsToSend+=[[whichOne,9]]
     if (self.target.statki[whichOne][3][0]<>0 or self.target.statki[whichOne][3][1]<>0): #speed(3) - zmienia pos (1->8)
      self.target.statki[whichOne][1][0]-=round(self.target.statki[whichOne][3][0],2)
      self.target.statki[whichOne][1][1]-=round(self.target.statki[whichOne][3][1],2)
-    if self.thingsToSend.count([whichOne,8])<1:     
-      self.thingsToSend+=[[whichOne,8]]
-#    print 'nowy pos: ',self.target.statki[i][1][0],self.target.statki[i][1][1]          
+     if self.thingsToSend.count([whichOne,8])<1:     
+      self.thingsToSend+=[[whichOne,8]]        
 
    
 class sender(threading.Thread):
