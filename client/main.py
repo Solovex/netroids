@@ -3,11 +3,6 @@
 import pygame,math,random,socket,struct,select,sys, types, time
 from threading import Thread
 
-class weaponManager():
-	def __init__(self):
-		pass
-
-
 class spaceship():
 	def __init__(self,pManager, pos=[300,300],id=0, name='',model=0):
 		self.speed=[0,0]
@@ -76,7 +71,7 @@ class baseParticle():
 class particleEngine(baseParticle):
 	def __init__(self,pos=[300,300],speed=[0,0]):
 		baseParticle.__init__(self, pos, 100)
-		self.speed = speed
+		self.speed = speed[:]
 		self.width = 0
 		
 	def update(self):
@@ -98,7 +93,32 @@ class particleEngine(baseParticle):
 			width = self.width/2
 			x, y = pos[0] - width, pos[1] - width	  
 			widok.fill(color, (x,  y,  self.width, self.width))
- 
+
+class particleRocket(baseParticle):
+	def __init__(self, pos=[300,300], speed=[0,0]):
+		baseParticle.__init__(self, pos, 80)
+		max_speed = 2
+		self.speed = speed[:]
+		for i in range(2):
+			if self.speed[i] < ~max_speed+1:
+				self.speed[i] = ~max_speed+1
+			elif self.speed[i] > max_speed:
+				self.speed[i] = max_speed
+			elif self.speed[i] > 0 and self.speed[i]<1:
+				self.speed[i] = 1
+			elif self.speed[i] > -1 and self.speed[i]<0:
+				self.speed[i] = -1
+			self.speed[i]=self.speed[i]+ (self.speed[i] * random.random())
+
+		
+	def update(self):
+		baseParticle.update(self)
+		self.pos[0]+=self.speed[0]
+		self.pos[1]+=self.speed[1]
+	def draw(self, widok, pos):
+		x=[(self.lifetime*1.5)-self.ticks] * 3
+		widok.set_at(pos, x)
+
 class particleManager():
 	def __init__(self):
 		self.particles = []
@@ -112,9 +132,68 @@ class particleManager():
 				
 	def count(self):
 		return len(self.particles)
+
+class baseWeapon(baseParticle):
+	def __init__(self, start, rot, distance_max, pMgr, effect):
+		baseParticle.__init__(self, start, 255)
+		self.start = start[:]
+		self.rot = rot
+		self.distance_max = distance_max
+		self.effect = effect #klasa okreslajaca efekty broni podczas updatowania (najczesciej latania)
+		self.pMgr = pMgr
+	def distance(self):
+		return ( ((self.pos[0]-self.start[0]) ** 2) + ((self.pos[1]-self.start[1]) ** 2) )
+
+class rocketWeapon(baseWeapon):
+	def __init__(self, pMgr, start, rot):
+		baseWeapon.__init__(self, start, rot, 1000000, pMgr, particleRocket)
+		self.width, self.height = 2, 10
+		self.wire = [[-self.width, -self.height] , [self.width, -self.height], [self.width, self.height], [-self.width, self.height]] #pocisk
+
+		self.vect = 1
+		self.speed_up = 15 #wzrost predkosci
+		self.setSpeed()
+		
+
+	def setSpeed(self):
+		self.speed = map(lambda x: -x, [self.vect*math.cos(self.rot+math.pi/2), self.vect*math.sin(self.rot+math.pi/2)])
+
+	def update(self):
+		baseWeapon.update(self)
+		spaliny = 26
+		if self.ticks >= self.speed_up:
+			self.vect = (self.ticks/10) ** 2
+			self.setSpeed()
+			spaliny = 4
+		map(lambda p: self.pos.__setitem__(p, self.pos.__getitem__(p) + self.speed.__getitem__(p)), range(2))
+		
+		for i in range(random.randint(int(spaliny/2), spaliny)):
+			self.pMgr.addNew(self.effect(map(lambda x: x+random.randint(-2,2), self.pos[:]), map(lambda x: -x, self.speed[:])))
+
+	def draw(self, widok, pos):
+		pts = []
+		for i in range(len(self.wire)):
+			pts.append([ pos[0] + self.wire[i][0] * math.cos(self.rot) - self.wire[i][1] * math.sin(self.rot), pos[1] + self.wire[i][0] * math.sin(self.rot) + self.wire[i][1] * math.cos(self.rot)])
+		pygame.draw.polygon(widok, (255, 255, 255), pts)
 	
-		
-		
+class weaponManager():
+	def __init__(self, screen):
+		self.parent = screen
+		self.bullets = []
+
+	def shoot(self, ship_id, class_name):
+		self.bullets.append(class_name(self.parent.particleManager, self.parent.statki[ship_id].pos[:], self.parent.statki[ship_id].rot))
+
+	def count(self):
+		return len(self.bullets)
+
+	def updateAll(self):
+		for i in self.bullets:
+			i.update()
+			d = i.distance()
+			if d > i.distance_max:
+				self.bullets.remove(i)
+	
 class baseScreen(): #bazowa klasa
 	def __init__(self, surface):
 		self.parent = surface
@@ -143,6 +222,7 @@ class gameThread(Thread):
 				self.parent.parent.client.send(struct.pack('4i', 3, self.parent.statek.id, self.tick, random.randint(0,65535)))
 				self.pingtick = 0
 			self.parent.particleManager.updateAll()
+			self.parent.weaponManager.updateAll()
 			self.zegar.tick(50)
 
 class consoleLog():
@@ -206,10 +286,11 @@ class gameScreen(baseScreen):
 			self.gwiazdy+=[[random.randint(0,600),random.randint(0,600)],]
 			
 		self.reading = False
-		self.pociski=[]
+		
 		self.keyTable=[]
 		self.textfont = pygame.font.Font(None, 25)
 		self.particleManager = particleManager()
+		self.weaponManager = weaponManager(self)
 		self.console = consoleLog(self.onConsoleReturn)
 		self.gameTh = gameThread(self)
 		self.gameTh.start()
@@ -218,15 +299,16 @@ class gameScreen(baseScreen):
 		self.statki = {player.id: player}
 
 	def drawInfo(self):
-		global particles
-		self.widok.blit(self.textfont.render("Particles: %d Ping: %d" % (self.particleManager.count(), self.gameTh.ping), 0, (255,255,255)) , (0,0))
+		self.widok.blit(self.textfont.render("Particles: %d Bullets: %d Ping: %d" % (self.particleManager.count(), self.weaponManager.count(), self.gameTh.ping), 0, (255,255,255)) , (0,0))
  
 	def updateScreen(self):
-		#global particles
 		self.widok.fill((0,0,0))
 		for i in self.particleManager.particles:
 			i.draw(self.widok,[i.pos[0]-self.statek.pos[0]+300,i.pos[1]-self.statek.pos[1]+300])
- 
+
+ 		for i in self.weaponManager.bullets:
+			i.draw(self.widok, [i.pos[0]-self.statek.pos[0]+300, i.pos[1]-self.statek.pos[1]+300])
+
 		if self.statki != {}:
 			if self.reading != True:
 				for i in self.statki:	  #procedurka przeliczajaca
@@ -250,7 +332,7 @@ class gameScreen(baseScreen):
 	def onConsoleReturn(self, text):
 		print "no to wyslalem chat o dlugosci %d"%len(text)
 		self.parent.client.send(struct.pack('4i', 12, self.statek.id, len(text), 0) + text)
-		
+	
 	def onKeyDown(self, event):
 		if self.console.input_vis:
 			self.console.onKeyDown(event)
@@ -259,7 +341,12 @@ class gameScreen(baseScreen):
 		if event.key == pygame.K_RETURN:
 			self.console.input_vis = not self.console.input_vis
 			if self.console.input_vis:
+
 				self.console.input_vis, self.console.input = True, ""
+		if event.key == pygame.K_SPACE:
+			print("wcisnalem spacje id: %d" % self.statek.id)
+			self.weaponManager.shoot(self.statek.id, rocketWeapon)
+			print("dodalem pocisk")
 
 		if event.key == pygame.K_UP:
 			self.statek.speedchange=0.1
