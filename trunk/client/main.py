@@ -351,29 +351,29 @@ class gameScreen(baseScreen):
 
 		if event.key == pygame.K_UP:
 			self.statek.speedchange=0.1
-			self.parent.client.send(struct.pack('iiii', 11,self.statek.id,2,1))
+			self.parent.client.send(struct.pack('iii', 11,2,1))
 		if event.key == pygame.K_DOWN:
 			self.statek.speedchange=-0.1
-			self.parent.client.send(struct.pack('iiii', 11,self.statek.id,2,-1))			
+			self.parent.client.send(struct.pack('iii', 11,2,-1))			
 		if event.key == pygame.K_LEFT:
 			self.statek.roting = -0.1
-			self.parent.client.send(struct.pack('iiii', 11,self.statek.id,1,-1))
+			self.parent.client.send(struct.pack('iii', 11,1,-1))
 		if event.key == pygame.K_RIGHT:
 			self.statek.roting = 0.1
-			self.parent.client.send(struct.pack('iiii', 11,self.statek.id,1,1))
+			self.parent.client.send(struct.pack('iii', 11,1,1))
 	def onKeyUp(self, event):
 		if event.key == pygame.K_UP:
 			self.statek.speedchange=0
-			self.parent.client.send(struct.pack('iiii', 11,self.statek.id,2,0))
+			self.parent.client.send(struct.pack('iii', 11,2,0))
 		if event.key == pygame.K_DOWN:
 			self.statek.speedchange=0
-			self.parent.client.send(struct.pack('iiii', 11,self.statek.id,2,0))			
+			self.parent.client.send(struct.pack('iii', 11,2,0))			
 		if event.key == pygame.K_LEFT:
 			self.statek.roting = 0
-			self.parent.client.send(struct.pack('iiii', 11,self.statek.id,1,0))
+			self.parent.client.send(struct.pack('iii', 11,1,0))
 		if event.key == pygame.K_RIGHT:
 			self.statek.roting = 0
-			self.parent.client.send(struct.pack('iiii', 11,self.statek.id,1,0))
+			self.parent.client.send(struct.pack('iii', 11,1,0))
 class loginScreen(baseScreen):
 	def __init__(self, surface):
 		baseScreen.__init__(self, surface)
@@ -482,7 +482,7 @@ class connectionClass():
 	def onConnect(self, sender):
 		print "Connected to %s:%d" % sender.connection
 		if isinstance(self.activeScreen, loginScreen):
-			sender.send(struct.pack("iiii",0, 1, len(self.activeScreen.login),len(self.activeScreen.password)) + self.activeScreen.login + self.activeScreen.password)
+			sender.send(struct.pack("3i",0,len(self.activeScreen.login),len(self.activeScreen.password)) + self.activeScreen.login + self.activeScreen.password)
 			#sender.send(self.activeScreen.login + self.activeScreen.password)
 		
 	def onDisconnect(self, sender):
