@@ -318,6 +318,7 @@ class cursesDisplay(threading.Thread):
                     self.stdscr.addstr(self.maxY-9+i[0],14,reduce(operator.add,[str(j[1])+{0:'$',1:'EC'}[j[0]]+' ' for j in i[1][1].items()])[:35])
 
             self.stdscr.refresh()
+            time.sleep(1)
 
 asd=server()
 prz=updater(asd)
