@@ -28,11 +28,15 @@ class server:
 	   'bot2':{'socket':None,'pos':[280,440],'model':0},
 	   'bot3':{'socket':None,'pos':[320,1550],'model':1},
 	   'bot4':{'socket':None,'pos':[360,660],'model':0},
-	   'bot5':{'socket':None,'pos':[400,770],'model':1},	   	   	   	   	   
+	   'bot5':{'socket':None,'pos':[400,770],'model':1},
+	   'Solar plant':{'model':1}	   	   	   	   	   
 	  }
   self.running=1
   self.statki={}
-  self.makeBots(5)
+  self.stacje={}
+  self.makeStations()
+  self.makeBots(2)
+
   
  def makeBots(self,howMany):
   for i in range(howMany):
@@ -40,7 +44,14 @@ class server:
    self.sockety[tempId]=('0.0.0.0',self.botsAmt+1)
    self.statki[tempId]=['bot%s'%i,[self.db['bot%s'%i]['pos'][0],self.db['bot%s'%i]['pos'][1]],[],[0,0],[0,0],0,0,0,0]
    self.botsAmt+=1
-    
+   
+ def makeStations(self):
+  tempId=max(self.sockety.keys())+1
+  self.sockety[tempId]=('0.0.0.0',self.botsAmt+1)
+  self.statki[tempId]=['Solar plant',[2000,2000],[],[0,0],[0,0],0,0,0,0]
+  self.stacje[tempId]=[0,{0:1000,1:15},0,[]]
+  
+     
  def run(self):
   while self.running:
    self.input,self.output,self.exc=select.select([sys.stdin,self.server],[],[],0.1) 
@@ -206,6 +217,11 @@ class updater(threading.Thread):
  def run(self):
   while self.running:
    time.sleep(0.02)
+   self.counter+=1
+   if self.counter==50:
+    self.counter=0
+    for i in self.target.stacje.keys():
+     self.stationUpdate(i)
    for i in self.target.statki.keys():
     if self.target.sockety[i][0][0]!='0':
      self.target.statki[i][8]+=1
@@ -235,7 +251,10 @@ class updater(threading.Thread):
      if self.thingsToSend.count([whichOne,8])<1:     
       self.thingsToSend+=[[whichOne,8]]        
 
-   
+ def stationUpdate(self,whichOne):
+  if self.target.stacje[whichOne][0]==0:	#solar plant
+   self.target.stacje[whichOne][1][1]+=1
+    
 class sender(threading.Thread):
  def __init__(self,target):
   self.target=target
@@ -266,13 +285,14 @@ class cursesDisplay(threading.Thread):
     curses.curs_set(0)
     self.maxY, self.maxX = self.stdscr.getmaxyx()
     while 1:
+     time.sleep(0.5)
      self.stdscr.hline(1,0,'-',self.maxX)
-     [self.stdscr.vline(0,i,'|',self.maxY) for i in [2,9,15,21,27,33,39,45,49,54,67]]
+     [self.stdscr.vline(0,i,'|',self.maxY-10) for i in [2,9,15,21,27,33,39,45,49,54,67]]
      [self.stdscr.addstr(0,i,j) for (i,j) in [(0,'id'),(4,'nick'),(10,'pos.x'),(16,'pos.y'),(22,'spd.x'),(28,'spd.y'),
 					      (34,'acc.x'),(40,'acc.y'),(46,'rot'),(50,'ping'),(55,'Relevant set'),(73,'IP')]]
      for i in self.target.statki.items():
-      if i[0]<self.maxY:
-       self.stdscr.addstr(i[0],0,str(i[0])[:2])		#nick      
+      if i[0]<self.maxY-10:
+       self.stdscr.addstr(i[0],0,str(i[0])[:2])		#id  
        self.stdscr.addstr(i[0],3,i[1][0][:5])		#nick
        self.stdscr.addstr(i[0],10,str(i[1][1][0])[:5])	#pos.x
        self.stdscr.addstr(i[0],16,str(i[1][1][1])[:5])	#pos.y
@@ -286,7 +306,17 @@ class cursesDisplay(threading.Thread):
         self.stdscr.addstr(int(i[0]),55,reduce(operator.add,[str(j)+' ' for j in i[1][2]])[:13])	#set
        if self.target.sockety.has_key(i[0]):	
         self.stdscr.addstr(int(i[0]),68,self.target.sockety[i[0]][0][:12])	#ip
-      
+     self.stdscr.hline(self.maxY-10,0,'-',self.maxX) 
+     [self.stdscr.addstr(self.maxY-9,i,j) for (i,j) in [(0,'id'),(5,'Typ'),(29,'Towary'),(60,'Transporty')]]
+     self.stdscr.hline(self.maxY-8,0,'-',self.maxX) 
+     [self.stdscr.vline(self.maxY-10,i,'|',self.maxY) for i in [2,13,50]]     
+     
+     for i in self.target.stacje.items():
+      if i[0]<10:
+       self.stdscr.addstr(self.maxY-9+i[0],0,str(i[0])[:2]) #id
+       self.stdscr.addstr(self.maxY-9+i[0],3,{0:"SolarPlant"}[i[1][0]][:11]) #id
+       self.stdscr.addstr(self.maxY-9+i[0],14,reduce(operator.add,[str(j[1])+{0:'$',1:'EC'}[j[0]]+' ' for j in i[1][1].items()])[:35])
+     
      self.stdscr.refresh()
   
 asd=server()
@@ -300,6 +330,9 @@ asd.run()
   
 #			     0	     1         2	  3      4    5     6      7		8
 # statki = {index socketu:[nazwa, [x, y],[relevantSet],[speed],[acc],rot,roting,speedchange, lastPing]}
+#				0	      1			2		3
+# stacje = {index socketu:[typ stacji,{towarId:[ilosc]},ilosc transportow,[id transportu]]}
+#
 # sockety = {socket}
 # self.db = {nazwa:{'socket':index socketu,'pos':[x,y]}}
 
