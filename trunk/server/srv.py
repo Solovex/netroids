@@ -86,7 +86,11 @@ class server:
 
                     if self.typ==13:
                         self.shootMissile(dictIndex(self.sockety,self.adres))
-#      print dictIndex(self.sockety,self.adres), 'strzela!!11'
+		    
+		    if self.typ==14:
+		     self.handleDock(dictIndex(self.sockety,self.adres),struct.unpack('i',self.data[4:8]))
+
+		
 
 
                 if s==sys.stdin:
@@ -96,6 +100,17 @@ class server:
     def shootMissile(self,shooter):
         for i in self.statki[shooter][2]:
             self.server.sendto(struct.pack('4i',13,shooter,self.statki[shooter][5],0),self.sockety[i])
+    
+    def handleDock(self,shipId,stationId):
+     if self.stacje.has_key(stationId):
+      if ((self.statki[shipId][1][0]-self.statki[stationId][1][0])**2 + (self.statki[shipId][1][1]-self.statki[stationId][1][1])**2 < 400) and (self.statki[shipId][3][0]**2 + self.statki[shipId][3][1]**2 < 1):
+	  self.server.sendto(struct.pack('2i',14,0),self.sockety[shipId])
+	  self.statki[shipId][3][0]=0.0
+	  self.statki[shipId][3][1]=0.0
+	  self.statki[shipId][4][0]=0.0
+	  self.statki[shipId][4][1]=0.0
+	  self.sendNewVect(shipId,9)
+	  self.sendNewVect(shipId,10)	  
 
 
 
@@ -318,7 +333,6 @@ class cursesDisplay(threading.Thread):
                     self.stdscr.addstr(self.maxY-9+i[0],14,reduce(operator.add,[str(j[1])+{0:'$',1:'EC'}[j[0]]+' ' for j in i[1][1].items()])[:35])
 
             self.stdscr.refresh()
-            time.sleep(1)
 
 asd=server()
 prz=updater(asd)
