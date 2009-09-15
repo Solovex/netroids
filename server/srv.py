@@ -155,9 +155,10 @@ class server:
 #    print self.statki[target][0],' ma w relevant secie ',self.statki[i][0]
                 self.statki[target][2].append(i)
                 self.sendNewObject(target,i)
-            if self.statki[target][2].count(i)==1 and (self.statki[target][1][0]-self.statki[i][1][0])**2+(self.statki[target][1][1]-self.statki[i][1][1])**2>1000000:
+            if self.statki[target][2].count(i)>0 and ((self.statki[target][1][0]-self.statki[i][1][0])**2+(self.statki[target][1][1]-self.statki[i][1][1])**2>360000):
 #    print self.statki[target][0],' juz nie ma w relevant secie ',self.statki[i][0]
                 self.statki[target][2].remove(i)
+                self.statki[i][2].remove(target)		
         for i in self.statki[target][2]:
             if not self.statki.has_key(i):
 #    print self.statki[target][0],' juz nie ma w relevant secie id',i,' bo sie rozlaczyl'
@@ -166,8 +167,8 @@ class server:
 
 
     def updateAllSets(self):
-        for i in self.statki.keys():
-            self.updateRelevantSet(i)
+        for j in self.statki.keys():
+            self.updateRelevantSet(j)
 
     def sendNewObject(self,toWhom,targetId):
 #  print 'wysylam do: ',self.sockety[toWhom]
@@ -300,7 +301,9 @@ class cursesDisplay(threading.Thread):
         curses.curs_set(0)
         self.maxY, self.maxX = self.stdscr.getmaxyx()
         while 1:
+
             time.sleep(0.5)
+            self.stdscr.clear()
             self.stdscr.hline(1,0,'-',self.maxX)
             [self.stdscr.vline(0,i,'|',self.maxY-10) for i in [2,9,15,21,27,33,39,45,49,54,67]]
             [self.stdscr.addstr(0,i,j) for (i,j) in [(0,'id'),(4,'nick'),(10,'pos.x'),(16,'pos.y'),(22,'spd.x'),(28,'spd.y'),
