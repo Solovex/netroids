@@ -1,6 +1,6 @@
 #!/usr/local/bin/python
 #encoding: utf-8
-import pygame,math,random,socket,struct,select,sys, types, time
+import pygame,math,random,socket,struct,select,sys, types, time,pygame.surfarray
 from threading import Thread
 
 class spaceship():
@@ -302,17 +302,19 @@ class gameScreen(baseScreen):
 		self.widok.blit(self.textfont.render("Particles: %d Bullets: %d Ping: %d" % (self.particleManager.count(), self.weaponManager.count(), self.gameTh.ping), 0, (255,255,255)) , (0,0))
  
 	def updateScreen(self):
-		self.widok.lock()
+
 	
 		self.widok.fill((0,0,0))
+		array=pygame.surfarray.pixels2d(self.widok)
 		for i in self.particleManager.particles:
 			x, y = i.pos[0]-self.statek.pos[0]+300, i.pos[1]-self.statek.pos[1]+300
 			if (x>0 and x<600) and (y>0 and y<600): #rysuj particle tylko jak sa widoczne
-				i.draw(self.widok,[x,y])
+				array[x][y]=255
+		del array				
 
  		for i in self.weaponManager.bullets:
 			i.draw(self.widok, [i.pos[0]-self.statek.pos[0]+300, i.pos[1]-self.statek.pos[1]+300])
-		self.widok.unlock()
+
 		if self.statki != {}:
 			if self.reading != True:
 				for i in self.statki:	  #procedurka przeliczajaca
