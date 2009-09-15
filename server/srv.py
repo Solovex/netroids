@@ -1,11 +1,13 @@
 #!/usr/local/bin/python
-import socket,threading,pygame,select,os,sys,struct,math,time
+import socket,threading,pygame,select,os,sys,struct,math,time,curses,operator
 
 
 def dictIndex(whereToLook,whatToFind):
  for i in whereToLook.items():
   if i[1]==whatToFind:
    return i[0]
+ if whereToLook.values().count(whatToFind)==0:
+  return 0  
 
 class server:
  def __init__(self):
@@ -24,7 +26,7 @@ class server:
 	   'bot0':{'socket':None,'pos':[200,220],'model':0},
 	   'bot1':{'socket':None,'pos':[240,330],'model':0},
 	   'bot2':{'socket':None,'pos':[280,440],'model':0},
-	   'bot3':{'socket':None,'pos':[320,550],'model':1},
+	   'bot3':{'socket':None,'pos':[320,1550],'model':1},
 	   'bot4':{'socket':None,'pos':[360,660],'model':0},
 	   'bot5':{'socket':None,'pos':[400,770],'model':1},	   	   	   	   	   
 	  }
@@ -46,38 +48,34 @@ class server:
     if s==self.server:
      self.data,self.adres=self.server.recvfrom(1024)
      if self.sockety.values().count(self.adres)==0:
-      self.handleConnection(self.adres)
-      print 'dodalem ',self.adres,' do listy! lista: ',self.sockety
-     #print 'data', struct.unpack('4i',self.data)
-     print "LEN %d" % len(self.data)
-     self.typ,self.id,self.arg1,self.arg2=struct.unpack('4i',self.data[:16])
+      self.sockety[max(self.sockety.keys())+1]=self.adres
+      
+     self.typ=struct.unpack('i',self.data[:4])[0]
 
      if self.typ==0:
-	self.login,self.pwd = self.data[16:16+self.arg1], self.data[16+self.arg1:16+self.arg1+self.arg2]
+	self.arg1,self.arg2=struct.unpack('2i',self.data[4:12])
+	self.login,self.pwd = self.data[12:12+self.arg1], self.data[12+self.arg1:12+self.arg1+self.arg2]
 	if self.login == '' or self.pwd == '':
 		self.handleQuit(self.adres)
 	else:
- 	 print self.login,self.pwd
+# 	 print self.login,self.pwd
          self.handleLogin(self.adres,self.login,self.pwd)
        
      if self.typ==11:
-        if self.id==dictIndex(self.sockety,self.adres):
-         self.changeVar(self.id,self.arg1,self.arg2)
-	else:
-	 self.server.sendto(struct.pack('4i',0,0,0,0),self.adres)
+         self.changeVar(dictIndex(self.sockety,self.adres),*struct.unpack('2i',self.data[4:12]))
 	 
      if	self.typ==3: 
-      print self.id,' mial ping ',self.statki[self.id][8]
-      self.statki[self.id][8]=0
-      self.server.sendto(struct.pack('4i',3,self.id,self.arg1,self.arg2),self.adres)
-     if self.typ==12:
-      txt = self.data[16:16+self.arg1]
-      print("ID:%d Chat type %d (Len:%d) : %s" % (self.id, self.arg2, self.arg1, txt))
-      self.consoleAdd(self.adres, "Wiem ze wpisales: %s" % txt)
+      self.statki[dictIndex(self.sockety,self.adres)][8]=0
+      self.server.sendto(struct.pack('i',3,)+self.data[4:12],self.adres)
+      
+#     if self.typ==12:
+#      txt = self.data[16:16+self.arg1]
+#      print("ID:%d Chat type %d (Len:%d) : %s" % (self.id, self.arg2, self.arg1, txt))
+#      self.consoleAdd(self.adres, "Wiem ze wpisales: %s" % txt)
       
      if self.typ==13:
       self.shootMissile(dictIndex(self.sockety,self.adres))
-      print dictIndex(self.sockety,self.adres), 'strzela!!11' 
+#      print dictIndex(self.sockety,self.adres), 'strzela!!11' 
       
  
     if s==sys.stdin:
@@ -88,21 +86,22 @@ class server:
   for i in self.statki[shooter][2]:
    self.server.sendto(struct.pack('4i',13,shooter,self.statki[shooter][5],0),self.sockety[i])
  
- def handleConnection(self,target):
-  self.sockety[max(self.sockety.keys())+1]=target
-  print 'Nowe polaczenie: ',target
+
+  
+  
  def consoleAdd(self, addr, txt, logtype=0):
-  print 'wiem ze dodac do konsoli klienta'
+#  print 'wiem ze dodac do konsoli klienta'
   self.server.sendto(struct.pack('4i', 12, self.id, len(txt), logtype) + txt, self.adres)
+  
  def handleLogin(self,sock,login,pwd):
-  print 'bedzie login'
+#  print 'bedzie login'
   if self.accounts.has_key(login):
    if self.accounts[login]==pwd and self.db[login]['socket']==None:
     self.db[login]['socket']=dictIndex(self.sockety,sock)
     self.statki[dictIndex(self.sockety,sock)]=[login,[self.db[login]['pos'][0],self.db[login]['pos'][1]],[],[0,0],[0,0],0,0,0,0]
     self.server.sendto(struct.pack('4i',0,dictIndex(self.sockety,sock),self.db[login]['pos'][0],self.db[login]['pos'][1]),sock)
     self.updateAllSets()
-    print login,' sie zalogowal'
+#    print login,' sie zalogowal'
    else:
     self.server.sendto(struct.pack('4i',0,0,0,0),sock)
   else:
@@ -111,13 +110,14 @@ class server:
    
 
  def handleQuit(self,sock):
-  print "kogos wyjebalo"
+#  print "kogos wyjebalo"
   try:
    self.db[self.statki[dictIndex(self.sockety,sock)][0]]['socket']=None
    self.statki.pop(dictIndex(self.sockety,sock))
-   print self.statki
+#   print self.statki
   except:
-   print 'wyjebalo kogos kto sie nie zalogowal' 
+   pass
+#   print 'wyjebalo kogos kto sie nie zalogowal' 
   self.sockety.pop(dictIndex(self.sockety,sock))
   self.updateAllSets()
   self.server.sendto(struct.pack('4i',666,666,666,666),sock)
@@ -126,15 +126,15 @@ class server:
  def updateRelevantSet(self,target):
   for i in self.statki.keys():
    if self.statki[target][2].count(i)==0 and (self.statki[target][1][0]-self.statki[i][1][0])**2+(self.statki[target][1][1]-self.statki[i][1][1])**2<360000:
-    print self.statki[target][0],' ma w relevant secie ',self.statki[i][0]
+#    print self.statki[target][0],' ma w relevant secie ',self.statki[i][0]
     self.statki[target][2].append(i)
     self.sendNewObject(target,i)
    if self.statki[target][2].count(i)==1 and (self.statki[target][1][0]-self.statki[i][1][0])**2+(self.statki[target][1][1]-self.statki[i][1][1])**2>1000000:
-    print self.statki[target][0],' juz nie ma w relevant secie ',self.statki[i][0]
+#    print self.statki[target][0],' juz nie ma w relevant secie ',self.statki[i][0]
     self.statki[target][2].remove(i)
   for i in self.statki[target][2]:
    if not self.statki.has_key(i):
-    print self.statki[target][0],' juz nie ma w relevant secie id',i,' bo sie rozlaczyl'
+#    print self.statki[target][0],' juz nie ma w relevant secie id',i,' bo sie rozlaczyl'
     self.sendQuitObject(target,i)
     self.statki[target][2].remove(i)    
     
@@ -144,7 +144,7 @@ class server:
    self.updateRelevantSet(i)  
 
  def sendNewObject(self,toWhom,targetId):
-  print 'wysylam do: ',self.sockety[toWhom]
+#  print 'wysylam do: ',self.sockety[toWhom]
   if self.sockety[toWhom][0][0]!='0':
    self.server.sendto(struct.pack("3i8fi%ss"%len(self.statki[targetId][0]),
     					2, targetId,self.db[self.statki[targetId][0]]['model'], #typ pakietu, id obiektu, id modelu
@@ -153,11 +153,11 @@ class server:
 					self.statki[targetId][4][0],self.statki[targetId][4][1], #acc x,y
 					self.statki[targetId][5], self.statki[targetId][6],	#rot, roting
 					len(self.statki[targetId][0]),self.statki[targetId][0]),self.sockety[toWhom])  #dlugosc nazwy,nazwa obiektu
-  print 'wyslalem obiekt ',targetId,' do ',toWhom										
+#  print 'wyslalem obiekt ',targetId,' do ',toWhom										
 
  def sendQuitObject(self,toWhom,targetId):
   self.server.sendto(struct.pack("4i",7,targetId,0,0),self.sockety[toWhom])
-  print "wyslalem do ",toWhom," ze ",targetId," sie rozlaczyl"  
+#  print "wyslalem do ",toWhom," ze ",targetId," sie rozlaczyl"  
   
  def sendNewVar(self,targetId,varId):			#typ zmiennej: 5 - rot, 6 - roting
   try:
@@ -177,7 +177,7 @@ class server:
        
  def changeVar(self,targetId,varId,value):
   if varId+5==6: #roting
-   print targetId,' sie rotuje'
+#   print targetId,' sie rotuje'
    if value>0:
     self.statki[targetId][6]=0.1
    if value<0: 
@@ -186,7 +186,7 @@ class server:
     self.statki[targetId][6]=0 
    self.sendNewVar(targetId,6)
   if varId+5==7: #speedchange
-   print targetId,' odpala silniki'
+#   print targetId,' odpala silniki'
    if value>0:
     self.statki[targetId][7]=0.1
    if value<0:
@@ -207,8 +207,9 @@ class updater(threading.Thread):
   while self.running:
    time.sleep(0.02)
    for i in self.target.statki.keys():
-    self.target.statki[i][8]+=1
-    if self.target.statki[i][8]>250 and self.target.sockety[i][0][0]!='0':
+    if self.target.sockety[i][0][0]!='0':
+     self.target.statki[i][8]+=1
+    if self.target.statki[i][8]>250:
      self.target.handleQuit(self.target.sockety[i])
     else: 
      self.update(i)
@@ -250,10 +251,49 @@ class sender(threading.Thread):
       self.target.target.sendNewVect(i[0],i[1])
      self.target.thingsToSend.remove(i)  
     time.sleep(0.2)
+
+class cursesDisplay(threading.Thread):
+ def __init__(self,target):
+  self.target=target
+  self.running=1
+  curses.wrapper(self.setStdScr)
+  threading.Thread.__init__(self)
+ def setStdScr(self,stdscr):
+  self.stdscr=stdscr 
+ def run(self):
+    self.stdscr.clear()
+    curses.echo()
+    curses.curs_set(0)
+    self.maxY, self.maxX = self.stdscr.getmaxyx()
+    while 1:
+     self.stdscr.hline(1,0,'-',self.maxX)
+     [self.stdscr.vline(0,i,'|',self.maxY) for i in [2,9,15,21,27,33,39,45,49,54,67]]
+     [self.stdscr.addstr(0,i,j) for (i,j) in [(0,'id'),(4,'nick'),(10,'pos.x'),(16,'pos.y'),(22,'spd.x'),(28,'spd.y'),
+					      (34,'acc.x'),(40,'acc.y'),(46,'rot'),(50,'ping'),(55,'Relevant set'),(73,'IP')]]
+     for i in self.target.statki.items():
+      if i[0]<self.maxY:
+       self.stdscr.addstr(i[0],0,str(i[0])[:2])		#nick      
+       self.stdscr.addstr(i[0],3,i[1][0][:5])		#nick
+       self.stdscr.addstr(i[0],10,str(i[1][1][0])[:5])	#pos.x
+       self.stdscr.addstr(i[0],16,str(i[1][1][1])[:5])	#pos.y
+       self.stdscr.addstr(i[0],22,str(i[1][3][0])[:5])	#spd.x
+       self.stdscr.addstr(i[0],28,str(i[1][3][1])[:5])	#spd.y     
+       self.stdscr.addstr(i[0],34,str(i[1][4][0])[:5])	#acc.x            
+       self.stdscr.addstr(i[0],40,str(i[1][4][1])[:5])	#acc.y
+       self.stdscr.addstr(i[0],46,str(i[1][5])[:4])	#rot
+       self.stdscr.addstr(i[0],50,str(i[1][8])[:4])	#ping
+       if len(i[1][2])>0:
+        self.stdscr.addstr(int(i[0]),55,reduce(operator.add,[str(j)+' ' for j in i[1][2]])[:13])	#set
+       if self.target.sockety.has_key(i[0]):	
+        self.stdscr.addstr(int(i[0]),68,self.target.sockety[i[0]][0][:12])	#ip
+      
+     self.stdscr.refresh()
   
 asd=server()
 prz=updater(asd)
 snd=sender(prz)
+disp=cursesDisplay(asd)
+disp.start()
 prz.start()
 snd.start()
 asd.run()             
