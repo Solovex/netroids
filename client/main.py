@@ -90,9 +90,9 @@ class particleEngine(baseParticle):
 		if self.width <= 1:
 			widok.set_at(pos,color)
 		else:
-			width = self.width/2
-			x, y = pos[0] - width, pos[1] - width	  
-			widok.fill(color, (x,  y,  self.width, self.width))
+			width = self.width / 2
+			x, y = (pos[0] - width), (pos[1] - width)
+			widok.fill(color, (x, y,  self.width, self.width))
 
 class particleRocket(baseParticle):
 	def __init__(self, pos=[300,300], speed=[0,0]):
@@ -303,17 +303,18 @@ class gameScreen(baseScreen):
  
 	def updateScreen(self):
 
-	
+		self.widok.lock()
 		self.widok.fill((0,0,0))
-		array=pygame.surfarray.pixels2d(self.widok)
-		for i in self.particleManager.particles:
+		#array=pygame.surfarray.pixels2d(self.widok)
+		for i in self.particleManager.particles + self.weaponManager.bullets:
 			x, y = i.pos[0]-self.statek.pos[0]+300, i.pos[1]-self.statek.pos[1]+300
 			if (x>0 and x<600) and (y>0 and y<600): #rysuj particle tylko jak sa widoczne
-				array[x][y]=255
-		del array				
-
- 		for i in self.weaponManager.bullets:
-			i.draw(self.widok, [i.pos[0]-self.statek.pos[0]+300, i.pos[1]-self.statek.pos[1]+300])
+				#array[x][y]=255
+				i.draw(self.widok, [x,y])
+		#del array				
+		self.widok.unlock()
+ 		#for i in self.weaponManager.bullets:
+		#	i.draw(self.widok, [i.pos[0]-self.statek.pos[0]+300, i.pos[1]-self.statek.pos[1]+300])
 
 		if self.statki != {}:
 			if self.reading != True:
@@ -520,7 +521,7 @@ class connectionClass():
 				rcv+=struct.unpack('2i', data[4:12])
 			elif len(data) == 16:
 				rcv+=struct.unpack('3i', data[4:16])
-			print("UNPACK LEN: %d/ %d/ %d" % (rcv[0], len(data), len(rcv)))
+			#print("UNPACK LEN: %d/ %d/ %d" % (rcv[0], len(data), len(rcv)))
 			#print(rcv)
 			dl = len(data)
 			if rcv[0] == 0:
@@ -544,8 +545,8 @@ class connectionClass():
 				print 'AAAAAAAAaaaaa', rcv[2]
 				"""
 				rcv = struct.unpack('3i8fi', data[0:12*4])
-				nick = data[:-(rcv[-1])]
-				#print nick
+				nick = data[12*4:12*4+rcv[-1]]
+				print repr(data)
 				print rcv
 				statek = (nick, ) + rcv[2:]
 				ship_id = rcv[1]
@@ -579,8 +580,6 @@ class connectionClass():
 				rcv=struct.unpack('iiff', data[0:16])
 				ship_id = rcv[1]
 				ship = self.activeScreen.statki.get(ship_id, None)
-				if ship.speed[1] != 0:
-					print (rcv[3] - ship.pos[1]) / ship.speed[1]
 				if ship != None:
 					ship.pos=[rcv[2], rcv[3]]
 					ship.pos[0]+=self.activeScreen.gameTh.ping*ship.speed[0]
@@ -593,12 +592,10 @@ class connectionClass():
 				rcv=struct.unpack('iiff', data[0:16])
 				ship_id = rcv[1]
 				ship = self.activeScreen.statki.get(ship_id, None)
- 
 				if ship != None:
 					ship.speed=[rcv[2], rcv[3]]
 					ship.speed[0]+=self.activeScreen.gameTh.ping * ship.acc[0]
 					ship.speed[1]+=self.activeScreen.gameTh.ping * ship.acc[1]
-					print "New speed: %f %f" % (rcv[2], rcv[3])
 				else:
 					print("Unknown statek ID:%d" % ship_id)
  
@@ -608,7 +605,6 @@ class connectionClass():
 				rcv=struct.unpack('iiff', data[0:16])
 				ship_id = rcv[1]
 				ship = self.activeScreen.statki.get(ship_id, None)
- 
 				if ship != None:
 					ship.acc=[rcv[2], rcv[3]]
 				else:
@@ -699,8 +695,7 @@ class clientSocket(Thread):
 		print("TCP SEND : %s"% data)
 
 	def udp_send(self, data):
-		print("UDP SEND : %s"% data)
-		print(self.connection)
+		print("UDP SEND : %s" % repr(data))
 		self.sock.sendto(data, self.connection)
 
 	def tcp_recv(self, count):
