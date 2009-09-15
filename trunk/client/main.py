@@ -117,7 +117,7 @@ class particleRocket(baseParticle):
 		self.pos[1]+=self.speed[1]
 	def draw(self, widok, pos):
 		x=[(self.lifetime*1.5)-self.ticks] * 3
-		widok.set_at(pos, x)
+		widok.fill(x, (pos[0], pos[1], 1, 1)) #zamiast set_at
 
 class particleManager():
 	def __init__(self):
@@ -302,13 +302,17 @@ class gameScreen(baseScreen):
 		self.widok.blit(self.textfont.render("Particles: %d Bullets: %d Ping: %d" % (self.particleManager.count(), self.weaponManager.count(), self.gameTh.ping), 0, (255,255,255)) , (0,0))
  
 	def updateScreen(self):
+		self.widok.lock()
+	
 		self.widok.fill((0,0,0))
 		for i in self.particleManager.particles:
-			i.draw(self.widok,[i.pos[0]-self.statek.pos[0]+300,i.pos[1]-self.statek.pos[1]+300])
+			x, y = i.pos[0]-self.statek.pos[0]+300, i.pos[1]-self.statek.pos[1]+300
+			if (x>0 and x<600) and (y>0 and y<600): #rysuj particle tylko jak sa widoczne
+				i.draw(self.widok,[x,y])
 
  		for i in self.weaponManager.bullets:
 			i.draw(self.widok, [i.pos[0]-self.statek.pos[0]+300, i.pos[1]-self.statek.pos[1]+300])
-
+		self.widok.unlock()
 		if self.statki != {}:
 			if self.reading != True:
 				for i in self.statki:	  #procedurka przeliczajaca
@@ -324,11 +328,15 @@ class gameScreen(baseScreen):
 				self.console.tick = 0
 
 			self.console.repaint()
-		self.widok.blit(self.console.widok, (0, 400))
-
+		
+		#self.widok.unlock()
 		self.drawInfo()
+
+		#self.parent.wnd.lock()
 		self.parent.wnd.blit(self.widok,(0,0))
 		self.parent.wnd.blit(self.panel,(600,0))
+		self.parent.wnd.blit(self.console.widok, (0, 400))
+		#self.parent.wnd.unlock()
 	def onConsoleReturn(self, text):
 		print "no to wyslalem chat o dlugosci %d"%len(text)
 		self.parent.client.send(struct.pack('4i', 12, self.statek.id, len(text), 0) + text)
@@ -345,7 +353,7 @@ class gameScreen(baseScreen):
 				self.console.input_vis, self.console.input = True, ""
 		if event.key == pygame.K_SPACE:
 			print("wcisnalem spacje rot: %d" % self.statek.rot)
-			#self.weaponManager.shoot(3, rocketWeapon)
+			self.weaponManager.shoot(self.statek.id, rocketWeapon)
 			
 			self.parent.client.send(struct.pack('4i',13,0,0,0))
 
