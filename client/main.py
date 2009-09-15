@@ -210,8 +210,13 @@ class gameThread(Thread):
 		self.pingtick = 0
 		self.tick = 0
 		self.time, self.ping = 0, 0
+		self.running = False
+	def __del__(self):
+		self.running = False
+		self.join()
 	def run(self):
-		while True:
+		self.running = True
+		while self.running:
  
 			if self.parent.reading != True:
 				for i in self.parent.statki:
@@ -305,16 +310,11 @@ class gameScreen(baseScreen):
 
 		self.widok.lock()
 		self.widok.fill((0,0,0))
-		#array=pygame.surfarray.pixels2d(self.widok)
 		for i in self.particleManager.particles + self.weaponManager.bullets:
 			x, y = i.pos[0]-self.statek.pos[0]+300, i.pos[1]-self.statek.pos[1]+300
 			if (x>0 and x<600) and (y>0 and y<600): #rysuj particle tylko jak sa widoczne
-				#array[x][y]=255
 				i.draw(self.widok, [x,y])
-		#del array				
 		self.widok.unlock()
- 		#for i in self.weaponManager.bullets:
-		#	i.draw(self.widok, [i.pos[0]-self.statek.pos[0]+300, i.pos[1]-self.statek.pos[1]+300])
 
 		if self.statki != {}:
 			if self.reading != True:
@@ -359,31 +359,32 @@ class gameScreen(baseScreen):
 			#bad self.weaponManager.shoot(self.statek.id, rocketWeapon)
 			
 			self.parent.client.send(struct.pack('4i',13,0,0,0))
-
+		if event.key == pygame.K_BACKSPACE:
+			self.parent.client.send(struct.pack('2i',14, 2))
 		if event.key == pygame.K_UP:
-			self.statek.speedchange=0.1
+			#self.statek.speedchange=0.1
 			self.parent.client.send(struct.pack('iii', 11,2,1))
 		if event.key == pygame.K_DOWN:
-			self.statek.speedchange=-0.1
+			#self.statek.speedchange=-0.1
 			self.parent.client.send(struct.pack('iii', 11,2,-1))			
 		if event.key == pygame.K_LEFT:
-			self.statek.roting = -0.1
+			#self.statek.roting = -0.1
 			self.parent.client.send(struct.pack('iii', 11,1,-1))
 		if event.key == pygame.K_RIGHT:
-			self.statek.roting = 0.1
+			#self.statek.roting = 0.1
 			self.parent.client.send(struct.pack('iii', 11,1,1))
 	def onKeyUp(self, event):
 		if event.key == pygame.K_UP:
-			self.statek.speedchange=0
+			#self.statek.speedchange=0
 			self.parent.client.send(struct.pack('iii', 11,2,0))
 		if event.key == pygame.K_DOWN:
-			self.statek.speedchange=0
+			#self.statek.speedchange=0
 			self.parent.client.send(struct.pack('iii', 11,2,0))			
 		if event.key == pygame.K_LEFT:
-			self.statek.roting = 0
+			#self.statek.roting = 0
 			self.parent.client.send(struct.pack('iii', 11,1,0))
 		if event.key == pygame.K_RIGHT:
-			self.statek.roting = 0
+			#self.statek.roting = 0
 			self.parent.client.send(struct.pack('iii', 11,1,0))
 class loginScreen(baseScreen):
 	def __init__(self, surface):
@@ -480,7 +481,7 @@ class connectionClass():
 	def __init__(self):
 		self.client = clientSocket({
 			#'host': '5.152.103.178',
-			'host' : 'localhost',
+			'host' : '5.152.103.178',
 			'port' : 12345,
 			'onConnect': self.onConnect,
 			'onDisconnect': self.onDisconnect,
@@ -636,7 +637,13 @@ class connectionClass():
 #				self.activeScreen.statki.get(rcv[1], None).rot=rcv[2]
 				self.activeScreen.weaponManager.shoot(rcv[1], rocketWeapon)
 				dl = 16
-				
+			if rcv[0] == 14:
+				rcv=struct.unpack('2i', data[0:8])
+				if rcv == (14, 0):
+					self.activeScreen.console.add(u'Wiem że się zadokowałem')
+				else:
+					self.activeScreen.console.add(u'Coś spierdolone!')				
+				dl = 8
 
 			data=data[dl:]
 			
