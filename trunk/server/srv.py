@@ -35,7 +35,7 @@ class server:
  def makeBots(self,howMany):
   for i in range(howMany):
    tempId=max(self.sockety.keys())+1
-   self.sockety[tempId]=('0.0.0.%s'%(self.botsAmt+1),0)
+   self.sockety[tempId]=('0.0.0.0',self.botsAmt+1)
    self.statki[tempId]=['bot%s'%i,[self.db['bot%s'%i]['pos'][0],self.db['bot%s'%i]['pos'][1]],[],[0,0],[0,0],0,0,0,0]
    self.botsAmt+=1
     
@@ -56,9 +56,9 @@ class server:
 	self.login,self.pwd = self.data[16:16+self.arg1], self.data[16+self.arg1:16+self.arg1+self.arg2]
 	if self.login == '' or self.pwd == '':
 		self.handleQuit(self.adres)
-
-	print self.login,self.pwd
-        self.handleLogin(self.adres,self.login,self.pwd)
+	else:
+ 	 print self.login,self.pwd
+         self.handleLogin(self.adres,self.login,self.pwd)
        
      if self.typ==11:
         if self.id==dictIndex(self.sockety,self.adres):
@@ -74,10 +74,20 @@ class server:
       txt = self.data[16:16+self.arg1]
       print("ID:%d Chat type %d (Len:%d) : %s" % (self.id, self.arg2, self.arg1, txt))
       self.consoleAdd(self.adres, "Wiem ze wpisales: %s" % txt)
+      
+     if self.typ==13:
+      self.shootMissile(dictIndex(self.sockety,self.adres))
+      print dictIndex(self.sockety,self.adres), 'strzela!!11' 
+      
  
     if s==sys.stdin:
 	pass
 # def handleChat(self, sock, )
+
+ def shootMissile(self,shooter):
+  for i in self.statki[shooter][2]:
+   self.server.sendto(struct.pack('4i',13,shooter,self.statki[shooter][5],0),self.sockety[i])
+ 
  def handleConnection(self,target):
   self.sockety[max(self.sockety.keys())+1]=target
   print 'Nowe polaczenie: ',target

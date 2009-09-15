@@ -344,9 +344,10 @@ class gameScreen(baseScreen):
 
 				self.console.input_vis, self.console.input = True, ""
 		if event.key == pygame.K_SPACE:
-			print("wcisnalem spacje id: %d" % self.statek.id)
-			self.weaponManager.shoot(self.statek.id, rocketWeapon)
-			print("dodalem pocisk")
+			print("wcisnalem spacje rot: %d" % self.statek.rot)
+			#self.weaponManager.shoot(3, rocketWeapon)
+			
+			self.parent.client.send(struct.pack('4i',13,0,0,0))
 
 		if event.key == pygame.K_UP:
 			self.statek.speedchange=0.1
@@ -576,6 +577,7 @@ class connectionClass():
 					print("Unknown statek ID:%d" % ship_id)
  
 				dl = 16
+
 			if rcv[0] == 10:
 				rcv=struct.unpack('iiff', data[0:16])
 				ship_id = rcv[1]
@@ -607,6 +609,12 @@ class connectionClass():
 				else:
 					print("Blad chatu")
 				dl=16+rcv[2]
+			if rcv[0] == 13:
+				print 'strzela z rotem', rcv[2]
+#				self.activeScreen.statki.get(rcv[1], None).rot=rcv[2]
+				self.activeScreen.weaponManager.shoot(rcv[1], rocketWeapon)
+				dl = 16
+				
 
 			data=data[dl:]
 			
