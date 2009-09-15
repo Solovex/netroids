@@ -219,7 +219,7 @@ class gameThread(Thread):
 			self.pingtick += 1
 			self.tick += 1
 			if self.pingtick > 50:
-				self.parent.parent.client.send(struct.pack('4i', 3, self.parent.statek.id, self.tick, random.randint(0,65535)))
+				self.parent.parent.client.send(struct.pack('3i', 3, self.tick, random.randint(0,65535)))
 				self.pingtick = 0
 			self.parent.particleManager.updateAll()
 			self.parent.weaponManager.updateAll()
@@ -355,7 +355,7 @@ class gameScreen(baseScreen):
 				self.console.input_vis, self.console.input = True, ""
 		if event.key == pygame.K_SPACE:
 			print("wcisnalem spacje rot: %d" % self.statek.rot)
-			self.weaponManager.shoot(self.statek.id, rocketWeapon)
+			#bad self.weaponManager.shoot(self.statek.id, rocketWeapon)
 			
 			self.parent.client.send(struct.pack('4i',13,0,0,0))
 
@@ -505,18 +505,29 @@ class connectionClass():
 		
 	def onRead(self, sender, data):
 		while len(data)>0:
-			if len(data[0:16]) < 16:
-				print "Bad size: %d = %s" % (len(data), data)
+			#if len(data[0:12]) < 12:
+				#p_id = -1
+				#if len(data[0:4]) == 4:
+				#	p_id = struct.unpack('i', data[0:4])[0]
+				#print "Bad size: %d = %s PACKET ID = %d" % (len(data), data, p_id)
+				#continue
+			if len(data[0:4]) < 4:
+				print "Bad size: %d = %s" % (len(data), repr(data))
 				continue
-			rcv=struct.unpack('iiii',data[0:16])
-			
+			#rcv=struct.unpack('iii',data[0:12]) if len(data) == 12 else struct.unpack('iii')
+			rcv=struct.unpack('i', data[0:4])
+			if len(data) == 12:
+				rcv+=struct.unpack('2i', data[4:12])
+			elif len(data) == 16:
+				rcv+=struct.unpack('3i', data[4:16])
+			print("UNPACK LEN: %d/ %d/ %d" % (rcv[0], len(data), len(rcv)))
 			#print(rcv)
-			dl = 16
+			dl = len(data)
 			if rcv[0] == 0:
 				if rcv == (0,0,0,0):
 					self.activeScreen=mainScreen(self)
 				else:
-					print "Zalogowalem sie!"
+					print "Zalogowalem sie! len rcv = %d" % len(rcv)
 					self.activeScreen=gameScreen(self)
 					self.activeScreen.statek = spaceship(self.activeScreen.particleManager, [rcv[2], rcv[3]], rcv[1])
 	
@@ -525,13 +536,19 @@ class connectionClass():
 					
 				dl = 16
 			if rcv[0] == 2: #statek nowy obieku
-				data2 = data[12:]
-				ship_id = rcv[1]
+				""""data2 = data[12:]
+				ship_id = struct.unpack('i', data[4:8])
 				nick_len = struct.unpack('i', data2[4*8:(4*8)+4])[0]
 				nick = data2[(4*8)+4:(4*8)+4+nick_len]
 				statek = (nick,) + struct.unpack('8f',data2[:4*8])
 				print 'AAAAAAAAaaaaa', rcv[2]
-				
+				"""
+				rcv = struct.unpack('3i8fi', data[0:12*4])
+				nick = data[:-(rcv[-1])]
+				#print nick
+				print rcv
+				statek = (nick, ) + rcv[2:]
+				ship_id = rcv[1]
 				if ship_id == self.activeScreen.statek.id:
 					self.activeScreen.statek.name = statek[0]
 				else:
@@ -539,14 +556,13 @@ class connectionClass():
 					self.activeScreen.statki[ship_id]=spaceship(self.activeScreen.particleManager, [statek[1], statek[2]], ship_id, statek[0],rcv[2])
 					self.activeScreen.reading = False
 
-				dl = 12+(4*8)+4+nick_len
+				dl = 12+(4*8)+4+len(nick)
 			if rcv[0] == 3:
-				ship_id = rcv[1]
-				ping = rcv[2]
-				self.activeScreen.gameTh.ping = self.activeScreen.gameTh.tick - rcv[2]
-			
+				#ship_id = rcv[1]
+				ping = rcv[1]
+				self.activeScreen.gameTh.ping = self.activeScreen.gameTh.tick - rcv[1]
 				print self.activeScreen.gameTh.time
-				dl = 16
+				dl = 12
 				
 
 			if rcv[0] == 7: 
