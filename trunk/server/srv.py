@@ -48,7 +48,7 @@ class server:
     def makeStations(self):
         tempId=max(self.sockety.keys())+1
         self.sockety[tempId]=('0.0.0.0',self.botsAmt+1)
-        self.statki[tempId]=['Solar plant',[2000,2000],[],[0,0],[0,0],0,0,0,0]
+        self.statki[tempId]=['Solar plant',[1000,1000],[],[0,0],[0,0],0,0,0,0]
         self.stacje[tempId]=[0,{0:1000,1:15},0,[]]
 
 
@@ -88,7 +88,7 @@ class server:
                         self.shootMissile(dictIndex(self.sockety,self.adres))
 		    
 		    if self.typ==14:
-		     self.handleDock(dictIndex(self.sockety,self.adres),struct.unpack('i',self.data[4:8]))
+		     self.handleDock(dictIndex(self.sockety,self.adres),*struct.unpack('i',self.data[4:8]))
 
 		
 
@@ -111,6 +111,7 @@ class server:
 	  self.statki[shipId][4][1]=0.0
 	  self.sendNewVect(shipId,9)
 	  self.sendNewVect(shipId,10)	  
+
 
 
 
