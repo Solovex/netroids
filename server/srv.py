@@ -1,7 +1,9 @@
 #!/usr/local/bin/python
 import socket,threading,pygame,select,os,sys,struct,math,time,curses,operator
 
-
+stationNames={0:"SolarPlant",1:"Transmitter",2:"TransportCompany"}
+goods={0:'$',1:'EC'}
+CTO={0:{},1:{}}
 def dictIndex(whereToLook,whatToFind):
     for i in whereToLook.items():
         if i[1]==whatToFind:
@@ -30,26 +32,30 @@ class server:
                  'bot4':{'socket':None,'pos':[360,660],'model':0},
                  'bot5':{'socket':None,'pos':[400,770],'model':1},
                  'Solar plant':{'model':1}
+		 
                 }
         self.running=1
         self.statki={}
         self.stacje={}
         self.makeStations()
-        self.makeBots(2)
 
 
     def makeBots(self,howMany):
         for i in range(howMany):
             tempId=max(self.sockety.keys())+1
             self.sockety[tempId]=('0.0.0.0',self.botsAmt+1)
-            self.statki[tempId]=['bot%s'%i,[self.db['bot%s'%i]['pos'][0],self.db['bot%s'%i]['pos'][1]],[],[0,0],[0,0],0,0,0,0]
+            self.statki[tempId]=['bot%s'%i,[self.db['bot%s'%i]['pos'][0],self.db['bot%s'%i]['pos'][1]],[],[0,0],[0,0],0,0,0,0,{}]
             self.botsAmt+=1
 
     def makeStations(self):
         tempId=max(self.sockety.keys())+1
         self.sockety[tempId]=('0.0.0.0',self.botsAmt+1)
-        self.statki[tempId]=['Solar plant',[1000,1000],[],[0,0],[0,0],0,0,0,0]
+        self.statki[tempId]=['Solar plant',[1000,1000],[],[0,0],[0,0],0,0,0,0,{}]
         self.stacje[tempId]=[0,{0:1000,1:15},0,[]]
+        tempId=max(self.sockety.keys())+1
+        self.sockety[tempId]=('0.0.0.0',self.botsAmt+1)
+        self.statki[tempId]=['Transmitter',[3000,3000],[],[0,0],[0,0],0,0,0,0,{}]
+        self.stacje[tempId]=[1,{0:5000,1:0},0,[]]
 
 
     def run(self):
@@ -125,7 +131,7 @@ class server:
         if self.accounts.has_key(login):
             if self.accounts[login]==pwd and self.db[login]['socket']==None:
                 self.db[login]['socket']=dictIndex(self.sockety,sock)
-                self.statki[dictIndex(self.sockety,sock)]=[login,[self.db[login]['pos'][0],self.db[login]['pos'][1]],[],[0,0],[0,0],0,0,0,0]
+                self.statki[dictIndex(self.sockety,sock)]=[login,[self.db[login]['pos'][0],self.db[login]['pos'][1]],[],[0,0],[0,0],0,0,0,0,{}]
                 self.server.sendto(struct.pack('4i',0,dictIndex(self.sockety,sock),self.db[login]['pos'][0],self.db[login]['pos'][1]),sock)
                 self.updateAllSets()
 #    print login,' sie zalogowal'
@@ -270,7 +276,16 @@ class updater(threading.Thread):
 
     def stationUpdate(self,whichOne):
         if self.target.stacje[whichOne][0]==0:        #solar plant
-            self.target.stacje[whichOne][1][1]+=1
+	    if self.target.stacje[whichOne][1][1]<900:
+             self.target.stacje[whichOne][1][1]+=1
+	    CTO[1][whichOne]=[1000/self.target.stacje[whichOne][1][1],-self.target.stacje[whichOne][1][1]]
+	    
+        if self.target.stacje[whichOne][0]==1:        #transmitter	
+	 if self.target.stacje[whichOne][1][1]>10:
+	  self.target.stacje[whichOne][1][1]-=1
+	  self.target.stacje[whichOne][1][0]+=5
+	 if  self.target.stacje[whichOne][1][1]<499:
+ 	  CTO[1][whichOne]=[3,500-self.target.stacje[whichOne][1][1]]  
 
 class sender(threading.Thread):
     def __init__(self,target):
@@ -301,8 +316,9 @@ class cursesDisplay(threading.Thread):
         curses.echo()
         curses.curs_set(0)
         self.maxY, self.maxX = self.stdscr.getmaxyx()
+	self.counter=0
         while 1:
-
+	    self.counter+=1
             time.sleep(0.5)
             self.stdscr.clear()
             self.stdscr.hline(1,0,'-',self.maxX)
@@ -333,10 +349,20 @@ class cursesDisplay(threading.Thread):
             for i in self.target.stacje.items():
                 if i[0]<10:
                     self.stdscr.addstr(self.maxY-9+i[0],0,str(i[0])[:2]) #id
-                    self.stdscr.addstr(self.maxY-9+i[0],3,{0:"SolarPlant"}[i[1][0]][:11]) #id
-                    self.stdscr.addstr(self.maxY-9+i[0],14,reduce(operator.add,[str(j[1])+{0:'$',1:'EC'}[j[0]]+' ' for j in i[1][1].items()])[:35])
+                    self.stdscr.addstr(self.maxY-9+i[0],3,stationNames[i[1][0]][:11]) #id
+                    self.stdscr.addstr(self.maxY-9+i[0],14,reduce(operator.add,[str(j[1])+goods[j[0]]+' ' for j in i[1][1].items()])[:35])
 
             self.stdscr.refresh()
+	    if self.counter==10:
+	     self.counter=0
+	     plik=open('cto.html','w')
+	     plik.write('<html><body>Centralna tabela ofert<br />')
+	     for i in CTO.keys():
+	      plik.write('Towar: %s <table border=1><tr><td>Id stacji</td><td>Cena</td><td>Ilosc</td></tr>' %goods[i])
+	      for j in CTO[i].keys():
+	       plik.write('<tr><td>%s</td><td>%.2f</td><td>%s</td></tr>'%(j,CTO[i][j][0],CTO[i][j][1]))
+	      plik.write('</table></body></html>')
+	     plik.close() 
 
 asd=server()
 prz=updater(asd)
@@ -347,10 +373,11 @@ prz.start()
 snd.start()
 asd.run()
 
-#                            0       1         2          3      4    5     6      7            8
-# statki = {index socketu:[nazwa, [x, y],[relevantSet],[speed],[acc],rot,roting,speedchange, lastPing]}
+#                            0       1         2          3      4    5     6      7            8	     9
+# statki = {index socketu:[nazwa, [x, y],[relevantSet],[speed],[acc],rot,roting,speedchange, lastPing,{towarId:ilosc}]}
 #                               0             1                 2               3
 # stacje = {index socketu:[typ stacji,{towarId:[ilosc]},ilosc transportow,[id transportu]]}
-#
+# 
+# CTO = {id towaru:{id stacji:[cena,ilosc]}}
 # sockety = {socket}
 # self.db = {nazwa:{'socket':index socketu,'pos':[x,y]}}
