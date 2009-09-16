@@ -316,10 +316,12 @@ class gameScreen(baseScreen):
 				i.draw(self.widok, [x,y])
 		self.widok.unlock()
 
-		if self.statki != {}:
-			if self.reading != True:
-				for i in self.statki:	  #procedurka przeliczajaca
+
+		if self.reading != True:
+				for i in self.statki.keys():	  #procedurka przeliczajaca
 					self.statki[i].draw(self.widok, [self.statki[i].pos[0]-self.statek.pos[0]+300,self.statki[i].pos[1]-self.statek.pos[1]+300])
+
+
 					
  
 		for i in self.gwiazdy:
@@ -555,7 +557,9 @@ class connectionClass():
 					self.activeScreen.statek.name = statek[0]
 				else:
 					self.activeScreen.reading = True
-					self.activeScreen.statki[ship_id]=spaceship(self.activeScreen.particleManager, [statek[1], statek[2]], ship_id, statek[0],rcv[2])
+					self.activeScreen.statki[ship_id]=spaceship(self.activeScreen.particleManager, [statek[2], statek[3]], ship_id, statek[0],rcv[2])
+					print 'NOWY STATEK! Name: ',statek[0],' MODEL ',rcv[2]
+
 					self.activeScreen.reading = False
 
 				dl = 12+(4*8)+4+len(nick)
@@ -636,6 +640,7 @@ class connectionClass():
 				print 'strzela z rotem', rcv[2]
 #				self.activeScreen.statki.get(rcv[1], None).rot=rcv[2]
 				self.activeScreen.weaponManager.shoot(rcv[1], rocketWeapon)
+				print self.activeScreen.statki
 				dl = 16
 			if rcv[0] == 14:
 				rcv=struct.unpack('2i', data[0:8])
