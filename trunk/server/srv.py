@@ -75,7 +75,7 @@ class server:
                         if self.login == '' or self.pwd == '':
                             self.handleQuit(self.adres)
                         else:
-#        print self.login,self.pwd
+                            debug("handleLogin('%s', '%s')" % (self.login,self.pwd))
                             self.handleLogin(self.adres,self.login,self.pwd)
 
                     if self.typ==11:
@@ -134,7 +134,7 @@ class server:
                 self.statki[dictIndex(self.sockety,sock)]=[login,[self.db[login]['pos'][0],self.db[login]['pos'][1]],[],[0,0],[0,0],0,0,0,0,{}]
                 self.server.sendto(struct.pack('4i',0,dictIndex(self.sockety,sock),self.db[login]['pos'][0],self.db[login]['pos'][1]),sock)
                 self.updateAllSets()
-#    print login,' sie zalogowal'
+                debug("%s sie zalogowal!" % login)
             else:
                 self.server.sendto(struct.pack('4i',0,0,0,0),sock)
         else:
@@ -143,7 +143,7 @@ class server:
 
 
     def handleQuit(self,sock):
-#  print "kogos wyjebalo"
+        debug("kogos wyjebalo")
         try:
             self.db[self.statki[dictIndex(self.sockety,sock)][0]]['socket']=None
             self.statki.pop(dictIndex(self.sockety,sock))
@@ -159,16 +159,16 @@ class server:
     def updateRelevantSet(self,target):
         for i in self.statki.keys():
             if self.statki[target][2].count(i)==0 and (self.statki[target][1][0]-self.statki[i][1][0])**2+(self.statki[target][1][1]-self.statki[i][1][1])**2<360000:
-#    print self.statki[target][0],' ma w relevant secie ',self.statki[i][0]
+                debug("%s ma w relevant secie %s " % (self.statki[target][0],self.statki[i][0]))
                 self.statki[target][2].append(i)
                 self.sendNewObject(target,i)
             if self.statki[target][2].count(i)>0 and ((self.statki[target][1][0]-self.statki[i][1][0])**2+(self.statki[target][1][1]-self.statki[i][1][1])**2>360000):
-#    print self.statki[target][0],' juz nie ma w relevant secie ',self.statki[i][0]
+                debug("%s juz nie ma w relevant secie %s" % (self.statki[target][0],self.statki[i][0]))
                 self.statki[target][2].remove(i)
                 self.statki[i][2].remove(target)		
         for i in self.statki[target][2]:
             if not self.statki.has_key(i):
-#    print self.statki[target][0],' juz nie ma w relevant secie id',i,' bo sie rozlaczyl'
+                debug("%s juz nie ma w relevant secie id %s bo sie rozlaczyl" % (self.statki[target][0], str(i)))
                 self.sendQuitObject(target,i)
                 self.statki[target][2].remove(i)
 
@@ -308,25 +308,31 @@ class cursesDisplay(threading.Thread):
         self.target=target
         self.running=1
         curses.wrapper(self.setStdScr)
+	self.console = []
+        self.consoleHeight = 7
         threading.Thread.__init__(self)
+    def consoleAdd(self, txt):
+        self.console += [txt]
     def setStdScr(self,stdscr):
         self.stdscr=stdscr
     def run(self):
         self.stdscr.clear()
         curses.echo()
         curses.curs_set(0)
-        self.maxY, self.maxX = self.stdscr.getmaxyx()
 	self.counter=0
-        while 1:
+        while True:
+            self.maxY, self.maxX = self.stdscr.getmaxyx()
+            stacjeY = int(self.maxY / 2)
 	    self.counter+=1
             time.sleep(0.5)
             self.stdscr.clear()
             self.stdscr.hline(1,0,'-',self.maxX)
-            [self.stdscr.vline(0,i,'|',self.maxY-10) for i in [2,9,15,21,27,33,39,45,49,54,67]]
+            [self.stdscr.vline(0,i,'|',stacjeY) for i in [2,9,15,21,27,33,39,45,49,54,67]]
             [self.stdscr.addstr(0,i,j) for (i,j) in [(0,'id'),(4,'nick'),(10,'pos.x'),(16,'pos.y'),(22,'spd.x'),(28,'spd.y'),
                                                      (34,'acc.x'),(40,'acc.y'),(46,'rot'),(50,'ping'),(55,'Relevant set'),(73,'IP')]]
+            
             for i in self.target.statki.items():
-                if i[0]<self.maxY-10:
+                if i[0]<self.maxY-stacjeY:
                     self.stdscr.addstr(i[0],0,str(i[0])[:2])         #id
                     self.stdscr.addstr(i[0],3,i[1][0][:5])           #nick
                     self.stdscr.addstr(i[0],10,str(i[1][1][0])[:5])  #pos.x
@@ -341,17 +347,27 @@ class cursesDisplay(threading.Thread):
                         self.stdscr.addstr(int(i[0]),55,reduce(operator.add,[str(j)+' ' for j in i[1][2]])[:13])        #set
                     if self.target.sockety.has_key(i[0]):
                         self.stdscr.addstr(int(i[0]),68,self.target.sockety[i[0]][0][:12])      #ip
-            self.stdscr.hline(self.maxY-10,0,'-',self.maxX)
-            [self.stdscr.addstr(self.maxY-9,i,j) for (i,j) in [(0,'id'),(5,'Typ'),(29,'Towary'),(60,'Transporty')]]
-            self.stdscr.hline(self.maxY-8,0,'-',self.maxX)
-            [self.stdscr.vline(self.maxY-10,i,'|',self.maxY) for i in [2,13,50]]
+
+            self.stdscr.hline(stacjeY-1, 0,'-',self.maxX)
+            self.stdscr.addstr(stacjeY-2, 0, " " * self.maxX)
+            [self.stdscr.addstr(stacjeY-2,i,j) for (i,j) in [(0,'id'),(5,'Typ'),(29,'Towary'),(60,'Transporty')]]
+            self.stdscr.hline(stacjeY-1,0,'-',self.maxX)
+            [self.stdscr.vline(stacjeY-2,i,'|',self.maxY) for i in [2,13,50]]
 
             for i in self.target.stacje.items():
                 if i[0]<10:
-                    self.stdscr.addstr(self.maxY-9+i[0],0,str(i[0])[:2]) #id
-                    self.stdscr.addstr(self.maxY-9+i[0],3,stationNames[i[1][0]][:11]) #id
-                    self.stdscr.addstr(self.maxY-9+i[0],14,reduce(operator.add,[str(j[1])+goods[j[0]]+' ' for j in i[1][1].items()])[:35])
+                    self.stdscr.addstr(stacjeY+i[0],0,str(i[0])[:2]) #id
+                    self.stdscr.addstr(stacjeY+i[0],3,stationNames[i[1][0]][:11]) #id
+                    self.stdscr.addstr(stacjeY+i[0],14,reduce(operator.add,[str(j[1])+goods[j[0]]+' ' for j in i[1][1].items()])[:35])
 
+            s = self.stdscr.subwin(self.consoleHeight, self.maxX, self.maxY-self.consoleHeight, 0)
+            s.clear()
+            s.box()
+            i = 1
+            for line in self.console[-(self.consoleHeight-2):]:
+                s.addstr(i,1,line[0:self.maxX-1])
+                i += 1
+            s.refresh()
             self.stdscr.refresh()
 	    if self.counter==10:
 	     self.counter=0
@@ -363,6 +379,15 @@ class cursesDisplay(threading.Thread):
 	       plik.write('<tr><td>%s</td><td>%.2f</td><td>%s</td></tr>'%(j,CTO[i][j][0],CTO[i][j][1]))
 	      plik.write('</table></body></html>')
 	     plik.close() 
+
+disp = None
+
+def debug(*text):
+    txt = "".join(map(lambda x: str(x), text))
+    if disp != None:
+        disp.consoleAdd(txt)
+    else:
+        print txt
 
 asd=server()
 prz=updater(asd)

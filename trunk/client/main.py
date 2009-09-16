@@ -20,6 +20,7 @@ class spaceship():
 		self.font = pygame.font.Font(None,15)
 		self.id = id
 		self.pManager = pManager
+
 	def draw(self,widok, pos=[300,300]):
 		for i in range(len(self.wire)):
 			pygame.draw.aaline(widok,(255,255,255),
@@ -432,7 +433,7 @@ class loginScreen(baseScreen):
  
 	def onKeyUp(self, event):
 		if event.key == 13:
-			print("%s %s" % (self.login, self.password))
+			self.parent.reinit()
 			self.parent.client.Active = True
  
 		if event.key == pygame.K_ESCAPE:
@@ -481,15 +482,21 @@ class mainScreen(baseScreen): #menu
 
 class connectionClass():
 	def __init__(self):
+		self.create(False)
+	def create(self, doDelete):
+		if doDelete:
+			del self.client
 		self.client = clientSocket({
 			#'host': '5.152.103.178',
-			'host' : '5.152.103.178',
+			'host' : sys.argv[1],
 			'port' : 12345,
 			'onConnect': self.onConnect,
 			'onDisconnect': self.onDisconnect,
 			'onError': self.onError,
 			'onRead': self.onRead,
 			'onFinish': self.onFinish})
+	def reinit(self):
+		self.create(True)
 	def onFinish(self, sender):
 		print "Finish"
 		
@@ -531,26 +538,16 @@ class connectionClass():
 				if rcv == (0,0,0,0):
 					self.activeScreen=mainScreen(self)
 				else:
-					print "Zalogowalem sie! len rcv = %d" % len(rcv)
+					print "Zalogowalem sie!"
 					self.activeScreen=gameScreen(self)
 					self.activeScreen.statek = spaceship(self.activeScreen.particleManager, [rcv[2], rcv[3]], rcv[1])
 	
 					self.activeScreen.initStatki(self.activeScreen.statek)
-					print(self.activeScreen.statki)
-					
+				
 				dl = 16
 			if rcv[0] == 2: #statek nowy obieku
-				""""data2 = data[12:]
-				ship_id = struct.unpack('i', data[4:8])
-				nick_len = struct.unpack('i', data2[4*8:(4*8)+4])[0]
-				nick = data2[(4*8)+4:(4*8)+4+nick_len]
-				statek = (nick,) + struct.unpack('8f',data2[:4*8])
-				print 'AAAAAAAAaaaaa', rcv[2]
-				"""
 				rcv = struct.unpack('3i8fi', data[0:12*4])
 				nick = data[12*4:12*4+rcv[-1]]
-				print repr(data)
-				print rcv
 				statek = (nick, ) + rcv[2:]
 				ship_id = rcv[1]
 				if ship_id == self.activeScreen.statek.id:
@@ -559,15 +556,12 @@ class connectionClass():
 					self.activeScreen.reading = True
 					self.activeScreen.statki[ship_id]=spaceship(self.activeScreen.particleManager, [statek[2], statek[3]], ship_id, statek[0],rcv[2])
 					print 'NOWY STATEK! Name: ',statek[0],' MODEL ',rcv[2]
-
 					self.activeScreen.reading = False
-
 				dl = 12+(4*8)+4+len(nick)
 			if rcv[0] == 3:
 				#ship_id = rcv[1]
 				ping = rcv[1]
 				self.activeScreen.gameTh.ping = self.activeScreen.gameTh.tick - rcv[1]
-				print self.activeScreen.gameTh.time
 				dl = 12
 				
 
@@ -640,7 +634,6 @@ class connectionClass():
 				print 'strzela z rotem', rcv[2]
 #				self.activeScreen.statki.get(rcv[1], None).rot=rcv[2]
 				self.activeScreen.weaponManager.shoot(rcv[1], rocketWeapon)
-				print self.activeScreen.statki
 				dl = 16
 			if rcv[0] == 14:
 				rcv=struct.unpack('2i', data[0:8])
@@ -701,13 +694,11 @@ class clientSocket(Thread):
 		for event in events:
 			if event not in self.data:
 				self.data[event]=None
-
 	def tcp_send(self, data):
 		self.sock.send(self, data)
 		print("TCP SEND : %s"% data)
 
 	def udp_send(self, data):
-		print("UDP SEND : %s" % repr(data))
 		self.sock.sendto(data, self.connection)
 
 	def tcp_recv(self, count):
