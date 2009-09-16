@@ -85,40 +85,28 @@ class particleEngine(baseParticle):
 		else:
 			self.width =0 
 			
-	def draw(self,widok, pos):
-		c=120-self.ticks
-		color = (c, c, c)
-		if self.width <= 1:
-			widok.set_at(pos,color)
-		else:
-			width = self.width / 2
-			x, y = (pos[0] - width), (pos[1] - width)
-			widok.fill(color, (x, y,  self.width, self.width))
+        def draw(self,widok, pos):
+                c=120-self.ticks
+                color = (c, c, c)
+                if self.width <= 1:
+                        widok.set_at(pos,color)
+                else:
+                        width = self.width / 2
+                        x, y = (pos[0] - width), (pos[1] - width)
+                        widok.fill(color, (x, y,  self.width, self.width))
 
 class particleRocket(baseParticle):
-	def __init__(self, pos=[300,300], speed=[0,0]):
-		baseParticle.__init__(self, pos, 80)
-		max_speed = 2
-		self.speed = speed[:]
-		for i in range(2):
-			if self.speed[i] < ~max_speed+1:
-				self.speed[i] = ~max_speed+1
-			elif self.speed[i] > max_speed:
-				self.speed[i] = max_speed
-			elif self.speed[i] > 0 and self.speed[i]<1:
-				self.speed[i] = 1
-			elif self.speed[i] > -1 and self.speed[i]<0:
-				self.speed[i] = -1
-			self.speed[i]=self.speed[i]+ (self.speed[i] * random.random())
-
-		
-	def update(self):
-		baseParticle.update(self)
-		self.pos[0]+=self.speed[0]
-		self.pos[1]+=self.speed[1]
-	def draw(self, widok, pos):
-		x=[(self.lifetime*1.5)-self.ticks] * 3
-		widok.fill(x, (pos[0], pos[1], 1, 1)) #zamiast set_at
+        def __init__(self, pos=[300,300], speed=[0,0]):
+                baseParticle.__init__(self, pos, random.randint(20, 50))
+                self.speed = (random.random() * (-1 if random.randint(0,2) == 1 else 1), random.random() * (-1 if random.randint(0,2) == 1 else 1))
+                
+        def update(self):
+                baseParticle.update(self)
+                self.pos[0]+=self.speed[0]
+                self.pos[1]+=self.speed[1]
+        def draw(self, widok, pos):
+                x=[(self.lifetime*1.5)-self.ticks] * 3
+                widok.fill(x, (pos[0], pos[1], 1, 1)) #zamiast set_at
 
 class particleManager():
 	def __init__(self):
@@ -161,14 +149,14 @@ class rocketWeapon(baseWeapon):
 
 	def update(self):
 		baseWeapon.update(self)
-		spaliny = 26
+		spaliny = self.speed_up-self.ticks
 		if self.ticks >= self.speed_up:
-			self.vect = (self.ticks/10) ** 2
+			self.vect = (self.ticks/10)
 			self.setSpeed()
-			spaliny = 4
+			spaliny = 3
 		map(lambda p: self.pos.__setitem__(p, self.pos.__getitem__(p) + self.speed.__getitem__(p)), range(2))
 		
-		for i in range(random.randint(int(spaliny/2), spaliny)):
+		for i in range(spaliny):
 			self.pMgr.addNew(self.effect(map(lambda x: x+random.randint(-2,2), self.pos[:]), map(lambda x: -x, self.speed[:])))
 
 	def draw(self, widok, pos):
@@ -314,7 +302,7 @@ class gameScreen(baseScreen):
 		for i in self.particleManager.particles + self.weaponManager.bullets:
 			x, y = i.pos[0]-self.statek.pos[0]+300, i.pos[1]-self.statek.pos[1]+300
 			if (x>0 and x<600) and (y>0 and y<600): #rysuj particle tylko jak sa widoczne
-				i.draw(self.widok, [x,y])
+				i.draw(self.widok, (x,y))
 		self.widok.unlock()
 
 
@@ -359,35 +347,35 @@ class gameScreen(baseScreen):
 				self.console.input_vis, self.console.input = True, ""
 		if event.key == pygame.K_SPACE:
 			print("wcisnalem spacje rot: %d" % self.statek.rot)
-			#bad self.weaponManager.shoot(self.statek.id, rocketWeapon)
-			
+			if self.parent.client == None or self.parent.client.Active == False:
+				self.weaponManager.shoot(self.statek.id, rocketWeapon)
 			self.parent.client.send(struct.pack('4i',13,0,0,0))
 		if event.key == pygame.K_BACKSPACE:
 			self.parent.client.send(struct.pack('2i',14, 2))
 		if event.key == pygame.K_UP:
-			#self.statek.speedchange=0.1
+			if self.parent.client == None or self.parent.client.Active == False: self.statek.speedchange=0.1
 			self.parent.client.send(struct.pack('iii', 11,2,1))
 		if event.key == pygame.K_DOWN:
-			#self.statek.speedchange=-0.1
+			if self.parent.client == None or self.parent.client.Active == False: self.statek.speedchange=-0.1
 			self.parent.client.send(struct.pack('iii', 11,2,-1))			
 		if event.key == pygame.K_LEFT:
-			#self.statek.roting = -0.1
+			if self.parent.client == None or self.parent.client.Active == False: self.statek.roting = -0.1
 			self.parent.client.send(struct.pack('iii', 11,1,-1))
 		if event.key == pygame.K_RIGHT:
-			#self.statek.roting = 0.1
+			if self.parent.client == None or self.parent.client.Active == False: self.statek.roting = 0.1
 			self.parent.client.send(struct.pack('iii', 11,1,1))
 	def onKeyUp(self, event):
 		if event.key == pygame.K_UP:
-			#self.statek.speedchange=0
+			if self.parent.client == None or self.parent.client.Active == False: self.statek.speedchange=0
 			self.parent.client.send(struct.pack('iii', 11,2,0))
 		if event.key == pygame.K_DOWN:
-			#self.statek.speedchange=0
+			if self.parent.client == None or self.parent.client.Active == False: self.statek.speedchange=0
 			self.parent.client.send(struct.pack('iii', 11,2,0))			
 		if event.key == pygame.K_LEFT:
-			#self.statek.roting = 0
+			if self.parent.client == None or self.parent.client.Active == False: self.statek.roting = 0
 			self.parent.client.send(struct.pack('iii', 11,1,0))
 		if event.key == pygame.K_RIGHT:
-			#self.statek.roting = 0
+			if self.parent.client == None or self.parent.client.Active == False: self.statek.roting = 0
 			self.parent.client.send(struct.pack('iii', 11,1,0))
 class loginScreen(baseScreen):
 	def __init__(self, surface):
