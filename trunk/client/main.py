@@ -131,11 +131,11 @@ class baseWeapon(baseParticle):
 		self.effect = effect #klasa okreslajaca efekty broni podczas updatowania (najczesciej latania)
 		self.pMgr = pMgr
 	def distance(self):
-		return ( ((self.pos[0]-self.start[0]) ** 2) + ((self.pos[1]-self.start[1]) ** 2) )
+		return ( ((self.pos[0]-self.start[0]) ** 2) + ((self.pos[1]-self.start[1]) ** 2) ) ** 0.5
 
 class rocketWeapon(baseWeapon):
 	def __init__(self, pMgr, start, rot):
-		baseWeapon.__init__(self, start, rot, 1000000, pMgr, particleRocket)
+		baseWeapon.__init__(self, start, rot, 100, pMgr, particleRocket)
 		self.width, self.height = 2, 10
 		self.wire = [[-self.width, -self.height] , [self.width, -self.height], [self.width, self.height], [-self.width, self.height]] #pocisk
 
@@ -151,7 +151,7 @@ class rocketWeapon(baseWeapon):
 		baseWeapon.update(self)
 		spaliny = self.speed_up-self.ticks
 		if self.ticks >= self.speed_up:
-			self.vect = (self.ticks/10)
+			self.vect = (self.ticks/10) ** 2
 			self.setSpeed()
 			spaliny = 3
 		map(lambda p: self.pos.__setitem__(p, self.pos.__getitem__(p) + self.speed.__getitem__(p)), range(2))
@@ -543,7 +543,10 @@ class connectionClass():
 				else:
 					self.activeScreen.reading = True
 					self.activeScreen.statki[ship_id]=spaceship(self.activeScreen.particleManager, [statek[2], statek[3]], ship_id, statek[0],rcv[2])
+					self.activeScreen.statki[ship_id].speed, self.activeScreen.statki[ship_id].acc, self.activeScreen.statki[ship_id].rot, self.activeScreen.statki[ship_id].roting = [statek[4], statek[5]], [statek[6], statek[7]], statek[8], statek[9]
+					print statek[0] , " chuj speed: " , self.activeScreen.statki[ship_id].speed
 					print 'NOWY STATEK! Name: ',statek[0],' MODEL ',rcv[2]
+
 					self.activeScreen.reading = False
 				dl = 12+(4*8)+4+len(nick)
 			if rcv[0] == 3:
