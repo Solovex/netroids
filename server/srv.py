@@ -4,6 +4,7 @@ import socket,threading,pygame,select,os,sys,struct,math,time,curses,operator
 stationNames={0:"SolarPlant",1:"Transmitter",2:"TransportCompany"}
 goods={0:'$',1:'EC'}
 CTO={0:{},1:{}}
+ap={}
 def dictIndex(whereToLook,whatToFind):
     for i in whereToLook.items():
         if i[1]==whatToFind:
@@ -22,16 +23,18 @@ class server:
                        'qwer':'qwer',
                        'zxcv':'zxcv'
                       }
-        self.db={'asdf':{'socket':None,'pos':[100,100],'model':0},
-                 'qwer':{'socket':None,'pos':[150,100],'model':0},
+        self.db={'asdf':{'socket':None,'pos':[1900,2000],'model':0},
+                 'qwer':{'socket':None,'pos':[150,2000],'model':0},
                  'zxcv':{'socket':None,'pos':[1500,1500],'model':0},
-                 'bot0':{'socket':None,'pos':[200,220],'model':0},
-                 'bot1':{'socket':None,'pos':[240,330],'model':0},
-                 'bot2':{'socket':None,'pos':[280,440],'model':0},
-                 'bot3':{'socket':None,'pos':[320,1550],'model':1},
-                 'bot4':{'socket':None,'pos':[360,660],'model':0},
-                 'bot5':{'socket':None,'pos':[400,770],'model':1},
-                 'Solar plant':{'model':1}
+                 'T0':{'socket':None,'pos':[200,220],'model':0},
+                 'T1':{'socket':None,'pos':[240,330],'model':0},
+                 'T2':{'socket':None,'pos':[280,440],'model':0},
+                 'T3':{'socket':None,'pos':[320,1550],'model':1},
+                 'T4':{'socket':None,'pos':[360,660],'model':0},
+                 'T5':{'socket':None,'pos':[400,770],'model':1},
+                 'Solar plant':{'model':1},
+                 'Transmitter':{'model':1},
+                 'TransportCompany':{'model':1}		 ,
 		 
                 }
         self.running=1
@@ -56,6 +59,10 @@ class server:
         self.sockety[tempId]=('0.0.0.0',self.botsAmt+1)
         self.statki[tempId]=['Transmitter',[3000,3000],[],[0,0],[0,0],0,0,0,0,{}]
         self.stacje[tempId]=[1,{0:5000,1:0},0,[]]
+        tempId=max(self.sockety.keys())+1
+        self.sockety[tempId]=('0.0.0.0',self.botsAmt+1)
+        self.statki[tempId]=['TransportCompany',[2000,2000],[],[0,0],[0,0],0,0,0,0,{}]
+        self.stacje[tempId]=[2,{0:5000},5,[]]	
 
 
     def run(self):
@@ -178,7 +185,7 @@ class server:
             self.updateRelevantSet(j)
 
     def sendNewObject(self,toWhom,targetId):
-#  print 'wysylam do: ',self.sockety[toWhom]
+
         if self.sockety[toWhom][0][0]!='0':
             self.server.sendto(struct.pack("3i8fi%ss"%len(self.statki[targetId][0]),
                                                  2, targetId,self.db[self.statki[targetId][0]]['model'], #typ pakietu, id obiektu, id modelu
@@ -187,11 +194,11 @@ class server:
                                                  self.statki[targetId][4][0],self.statki[targetId][4][1], #acc x,y
                                                  self.statki[targetId][5], self.statki[targetId][6],     #rot, roting
                                                  len(self.statki[targetId][0]),self.statki[targetId][0]),self.sockety[toWhom])  #dlugosc nazwy,nazwa obiektu
-#  print 'wyslalem obiekt ',targetId,' do ',toWhom
+
 
     def sendQuitObject(self,toWhom,targetId):
         self.server.sendto(struct.pack("4i",7,targetId,0,0),self.sockety[toWhom])
-#  print "wyslalem do ",toWhom," ze ",targetId," sie rozlaczyl"
+
 
     def sendNewVar(self,targetId,varId):                   #typ zmiennej: 5 - rot, 6 - roting
         try:
@@ -204,14 +211,13 @@ class server:
         try:
             for i in self.statki[targetId][2]:
                 self.server.sendto(struct.pack("2i2f",vectId,targetId,self.statki[targetId][{8:1,9:3,10:4}[vectId]][0],self.statki[targetId][{8:1,9:3,10:4}[vectId]][1]),self.sockety[i])
-    #   print 'wyslalem do ',self.sockety[i],'pakiet: ',vectId,targetId,self.statki[targetId][{8:1,9:3,10:4}[vectId]][0],self.statki[targetId][{8:1,9:3,10:4}[vectId]][1]
+
 
         except:
             pass
 
     def changeVar(self,targetId,varId,value):
         if varId+5==6: #roting
-#   print targetId,' sie rotuje'
             if value>0:
                 self.statki[targetId][6]=0.1
             if value<0:
@@ -220,7 +226,6 @@ class server:
                 self.statki[targetId][6]=0
             self.sendNewVar(targetId,6)
         if varId+5==7: #speedchange
-#   print targetId,' odpala silniki'
             if value>0:
                 self.statki[targetId][7]=0.1
             if value<0:
@@ -228,6 +233,35 @@ class server:
             if value==0:
                 self.statki[targetId][7]=0
             self.sendNewVar(targetId,7)
+
+    def launchTransport(self,fromWhere):
+     item=self.statki[fromWhere]
+     tempId=max(self.sockety.keys())+1
+     self.sockety[tempId]=('0.0.0.0',self.botsAmt+1)
+     self.stacje[fromWhere][3]+=[tempId]
+     self.statki[tempId]=['T0',[item[1][0],item[1][1]],[],[0,0],[0,0],0,0,0,0,{}]
+     self.botsAmt+=1     	  
+   #  self.changeVar(tempId,2,0.1) 
+ #    
+#     self.changeVar(tempId,2,0.1)
+     
+    def autopilot(self,whichOne,whereTo):
+     item=self.statki[whichOne]
+     if item[3][0]**2 + item[3][1]**2 > 1:
+      self.changeVar(whichOne,2,0)
+     if item[1][0]!=whereTo[0]:
+      targetRot=-(math.atan2(item[1][1]-whereTo[1],-item[1][0]+whereTo[0])-math.pi/2)
+
+      self.changeVar(whichOne,1,0)
+      if targetRot-item[5]>0.:
+       if targetRot>item[5]:
+        self.changeVar(whichOne,1,1)
+       if targetRot<item[5]:
+        self.changeVar(whichOne,1,-1)	
+      if (targetRot==item[5]) and  item[3][0]**2 + item[3][1]**2
+       self.changeVar(whichOne,2,0.1)
+	
+     
 
 class updater(threading.Thread):
     def __init__(self,target):
@@ -239,8 +273,10 @@ class updater(threading.Thread):
         threading.Thread.__init__(self)
     def run(self):
         while self.running:
-            time.sleep(0.02)
+            self.clock.tick(50)
             self.counter+=1
+	    for i in ap.items():
+    	       self.target.autopilot(i[0],i[1])
             if self.counter==50:
                 self.counter=0
                 for i in self.target.stacje.keys():
@@ -255,43 +291,59 @@ class updater(threading.Thread):
 
 
     def update(self,whichOne):
-#    if self.target.statki[i][6]<>0: #roting(6) - zmienia rot(5)
-        self.target.statki[whichOne][5]+=self.target.statki[whichOne][6]
+	item=self.target.statki[whichOne]
+        item[5]+=item[6]
+	if item[5]>math.pi*2:
+	 item[5]=item[5]%math.pi*2
         if self.thingsToSend.count([whichOne,5])<1:
             self.thingsToSend+=[[whichOne,5]]
-        self.target.statki[whichOne][4][0]=round(self.target.statki[whichOne][7]*math.cos(self.target.statki[whichOne][5]+math.pi/2),2)
-        self.target.statki[whichOne][4][1]=round(self.target.statki[whichOne][7]*math.sin(self.target.statki[whichOne][5]+math.pi/2),2)
+        item[4][0]=round(item[7]*math.cos(item[5]+math.pi/2),2)
+        item[4][1]=round(item[7]*math.sin(item[5]+math.pi/2),2)
         if self.thingsToSend.count([whichOne,10])<1:
             self.thingsToSend+=[[whichOne,10]]
-        if (self.target.statki[whichOne][4][0]<>0 or self.target.statki[whichOne][4][1]<>0): #acc(4) - zmienia speed (3->9)
-            self.target.statki[whichOne][3][0]+=round(self.target.statki[whichOne][4][0],2)
-            self.target.statki[whichOne][3][1]+=round(self.target.statki[whichOne][4][1],2)
+        if (item[4][0]<>0 or item[4][1]<>0): #acc(4) - zmienia speed (3->9)
+            item[3][0]+=round(item[4][0],2)
+            item[3][1]+=round(item[4][1],2)
             if self.thingsToSend.count([whichOne,9])<1:
                 self.thingsToSend+=[[whichOne,9]]
-        if (self.target.statki[whichOne][3][0]<>0 or self.target.statki[whichOne][3][1]<>0): #speed(3) - zmienia pos (1->8)
-            self.target.statki[whichOne][1][0]-=round(self.target.statki[whichOne][3][0],2)
-            self.target.statki[whichOne][1][1]-=round(self.target.statki[whichOne][3][1],2)
+        if (item[3][0]<>0 or item[3][1]<>0): #speed(3) - zmienia pos (1->8)
+            item[1][0]-=round(item[3][0],2)
+            item[1][1]-=round(item[3][1],2)
             if self.thingsToSend.count([whichOne,8])<1:
                 self.thingsToSend+=[[whichOne,8]]
+	self.target.statki[whichOne]=item	
 
     def stationUpdate(self,whichOne):
-        if self.target.stacje[whichOne][0]==0:        #solar plant
-	    if self.target.stacje[whichOne][1][1]<900:
-             self.target.stacje[whichOne][1][1]+=1
-	    CTO[1][whichOne]=[1000/self.target.stacje[whichOne][1][1],-self.target.stacje[whichOne][1][1]]
+        global ap
+        item=self.target.stacje[whichOne]
+        if item[0]==0:        #solar plant
+	    if item[1][1]<900:
+             item[1][1]+=1
+	    CTO[1][whichOne]=[1000/item[1][1],-item[1][1]]
 	    
-        if self.target.stacje[whichOne][0]==1:        #transmitter	
-	 if self.target.stacje[whichOne][1][1]>10:
-	  self.target.stacje[whichOne][1][1]-=1
-	  self.target.stacje[whichOne][1][0]+=5
-	 if  self.target.stacje[whichOne][1][1]<499:
- 	  CTO[1][whichOne]=[3,500-self.target.stacje[whichOne][1][1]]  
+        if item[0]==1:        #transmitter	
+	 if item[1][1]>10:
+	  item[1][1]-=1
+	  item[1][0]+=5
+	 if  item[1][1]<499:
+ 	  CTO[1][whichOne]=[3,500-item[1][1]]  
+	
+	if item[0]==2:
+	 if len(item[3])<1:
+        	 self.target.launchTransport(whichOne)
+	 else:
+	  if (self.target.statki[item[3][0]][1][0]-3000)**2 + (self.target.statki[item[3][0]][1][1]-3000)<1000:
+	   ap[item[3][0]]=[3000,3000]
+	  else:
+	   ap[item[3][0]]=[1000,1000]
+	self.target.stacje[whichOne]=item 
 
 class sender(threading.Thread):
     def __init__(self,target):
         self.target=target
         self.running=1
         threading.Thread.__init__(self)
+	self.clock=pygame.time.Clock()
     def run(self):
         while self.running:
             self.target.target.updateAllSets()
@@ -301,7 +353,7 @@ class sender(threading.Thread):
                 if i[1] in [8,9,10]: #wektory
                     self.target.target.sendNewVect(i[0],i[1])
                 self.target.thingsToSend.remove(i)
-            time.sleep(0.2)
+            self.clock.tick(50)
 
 class cursesDisplay(threading.Thread):
     def __init__(self,target):
@@ -356,9 +408,11 @@ class cursesDisplay(threading.Thread):
 
             for i in self.target.stacje.items():
                 if i[0]<10:
-                    self.stdscr.addstr(stacjeY+i[0],0,str(i[0])[:2]) #id
-                    self.stdscr.addstr(stacjeY+i[0],3,stationNames[i[1][0]][:11]) #id
-                    self.stdscr.addstr(stacjeY+i[0],14,reduce(operator.add,[str(j[1])+goods[j[0]]+' ' for j in i[1][1].items()])[:35])
+                    self.stdscr.addstr(stacjeY+i[0]-2,0,str(i[0])[:2]) #id
+                    self.stdscr.addstr(stacjeY+i[0]-2,3,stationNames[i[1][0]][:11]) #id
+                    self.stdscr.addstr(stacjeY+i[0]-2,14,reduce(operator.add,[str(j[1])+goods[j[0]]+' ' for j in i[1][1].items()])[:35])
+                    if len(i[1][3])>0:
+                        self.stdscr.addstr(int(stacjeY+i[0]-2),61,reduce(operator.add,[str(j)+' ' for j in i[1][3]])[:13])        #set
 
             s = self.stdscr.subwin(self.consoleHeight, self.maxX, self.maxY-self.consoleHeight, 0)
             s.clear()
@@ -403,6 +457,7 @@ asd.run()
 #                               0             1                 2               3
 # stacje = {index socketu:[typ stacji,{towarId:[ilosc]},ilosc transportow,[id transportu]]}
 # 
+# ap{id} = [x,y]
 # CTO = {id towaru:{id stacji:[cena,ilosc]}}
 # sockety = {socket}
 # self.db = {nazwa:{'socket':index socketu,'pos':[x,y]}}
