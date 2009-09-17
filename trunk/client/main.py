@@ -764,3 +764,4 @@ class clientSocket(Thread):
 
 game = Game(800, 600)
 game.runGame(mainScreen(game))
+>>>>>>> .r23
