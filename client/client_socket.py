@@ -1,4 +1,4 @@
-import socket
+import socket, select
 from threading import Thread
 
 class clientSocket(Thread):
