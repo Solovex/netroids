@@ -23,8 +23,8 @@ class server:
                        'qwer':'qwer',
                        'zxcv':'zxcv'
                       }
-        self.db={'asdf':{'socket':None,'pos':[1900,2000],'model':0},
-                 'qwer':{'socket':None,'pos':[150,2000],'model':0},
+        self.db={'asdf':{'socket':None,'pos':[3000,3000],'model':0},
+                 'qwer':{'socket':None,'pos':[3000,3000],'model':0},
                  'zxcv':{'socket':None,'pos':[1500,1500],'model':0},
                  'T0':{'socket':None,'pos':[200,220],'model':0},
                  'T1':{'socket':None,'pos':[240,330],'model':0},
@@ -241,6 +241,7 @@ class server:
      self.stacje[fromWhere][3]+=[tempId]
      self.statki[tempId]=['T0',[item[1][0],item[1][1]],[],[0,0],[0,0],0,0,0,0,{}]
      self.botsAmt+=1     	  
+     ap[tempId]=[3000,3000]
    #  self.changeVar(tempId,2,0.1) 
  #    
 #     self.changeVar(tempId,2,0.1)
@@ -251,16 +252,17 @@ class server:
       self.changeVar(whichOne,2,0)
      if item[1][0]!=whereTo[0]:
       targetRot=-(math.atan2(item[1][1]-whereTo[1],-item[1][0]+whereTo[0])-math.pi/2)
-
       self.changeVar(whichOne,1,0)
-      if targetRot-item[5]>0.:
+      if abs(targetRot-item[5])>0.1:
        if targetRot>item[5]:
         self.changeVar(whichOne,1,1)
        if targetRot<item[5]:
         self.changeVar(whichOne,1,-1)	
-      if (targetRot==item[5]) and  item[3][0]**2 + item[3][1]**2
-       self.changeVar(whichOne,2,0.1)
-	
+      if  (abs(item[3][0]-math.cos(targetRot+math.pi/2))>0.1 and abs(item[3][1]-math.sin(targetRot+math.pi/2))>0.1) and (item[5]-targetRot)<0.2:
+     #   debug("%s  %s"%(math.cos(targetRot+math.pi/2),math.sin(targetRot+math.pi/2)))
+
+        self.changeVar(whichOne,2,0.1)
+#(abs(item[3][0]-math.cos(targetRot+math.pi/2))<1 and abs(item[3][1]- math.sin(targetRot+math.pi/2))<1):	
      
 
 class updater(threading.Thread):
@@ -331,12 +333,18 @@ class updater(threading.Thread):
 	if item[0]==2:
 	 if len(item[3])<1:
         	 self.target.launchTransport(whichOne)
+
 	 else:
-	  if (self.target.statki[item[3][0]][1][0]-3000)**2 + (self.target.statki[item[3][0]][1][1]-3000)<1000:
-	   ap[item[3][0]]=[3000,3000]
-	  else:
-	   ap[item[3][0]]=[1000,1000]
-	self.target.stacje[whichOne]=item 
+
+#	   debug('%s   kurwa'%(((self.target.statki[item[3][0]][1][0]-1000)**2 + (self.target.statki[item[3][0]][1][1]-1000)**2)))
+ 	   if ((self.target.statki[item[3][0]][1][0]-3000)**2 + (self.target.statki[item[3][0]][1][1]-3000)**2)<1000**2:
+	    ap[item[3][0]]=[1000,1000]
+	    debug('aaa kurwa 1000')
+	   else:
+	    if ((self.target.statki[item[3][0]][1][0]-1000)**2 + (self.target.statki[item[3][0]][1][1]-1000)**2)<1000**2:
+    	     ap[item[3][0]]=[3000,3000]
+	     debug('aaa kurwa 3000')
+	 self.target.stacje[whichOne]=item 
 
 class sender(threading.Thread):
     def __init__(self,target):
