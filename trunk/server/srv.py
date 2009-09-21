@@ -23,7 +23,7 @@ class server:
                        'qwer':'qwer',
                        'zxcv':'zxcv'
                       }
-        self.db={'asdf':{'socket':None,'pos':[3000,3000],'model':0},
+        self.db={'asdf':{'socket':None,'pos':[2000,2000],'model':0},
                  'qwer':{'socket':None,'pos':[3000,3000],'model':0},
                  'zxcv':{'socket':None,'pos':[1500,1500],'model':0},
                  'T0':{'socket':None,'pos':[200,220],'model':0},
@@ -241,28 +241,36 @@ class server:
      self.stacje[fromWhere][3]+=[tempId]
      self.statki[tempId]=['T0',[item[1][0],item[1][1]],[],[0,0],[0,0],0,0,0,0,{}]
      self.botsAmt+=1     	  
-     ap[tempId]=[3000,3000]
+     ap[tempId]=[1000,1000]
    #  self.changeVar(tempId,2,0.1) 
  #    
 #     self.changeVar(tempId,2,0.1)
      
     def autopilot(self,whichOne,whereTo):
      item=self.statki[whichOne]
-     if item[3][0]**2 + item[3][1]**2 > 1:
-      self.changeVar(whichOne,2,0)
-     if item[1][0]!=whereTo[0]:
+#     if item[3][0]**2 + item[3][1]**2 > 1:
+     self.changeVar(whichOne,2,0)
+     self.changeVar(whichOne,1,0)
+     if item[1][0]!=whereTo[0] and item[1][1]!=whereTo[1]:
       targetRot=-(math.atan2(item[1][1]-whereTo[1],-item[1][0]+whereTo[0])-math.pi/2)
-      self.changeVar(whichOne,1,0)
-      if abs(targetRot-item[5])>0.1:
-       if targetRot>item[5]:
-        self.changeVar(whichOne,1,1)
-       if targetRot<item[5]:
-        self.changeVar(whichOne,1,-1)	
-      if  (abs(item[3][0]-math.cos(targetRot+math.pi/2))>0.1 and abs(item[3][1]-math.sin(targetRot+math.pi/2))>0.1) and (item[5]-targetRot)<0.2:
-     #   debug("%s  %s"%(math.cos(targetRot+math.pi/2),math.sin(targetRot+math.pi/2)))
+      targetSpeed=[math.cos(targetRot),-math.sin(targetRot)]
+      tempSpeed=[targetSpeed[0]-item[3][0],targetSpeed[1]-item[3][1]]
+      tempRot=-(math.atan2(tempSpeed[1],tempSpeed[0]))
+ #     debug("%s"%(item[3]))
 
-        self.changeVar(whichOne,2,0.1)
-#(abs(item[3][0]-math.cos(targetRot+math.pi/2))<1 and abs(item[3][1]- math.sin(targetRot+math.pi/2))<1):	
+#	-(math.atan2(item[3][1],-item[3][0])
+      debug("%s"%tempRot)
+      if abs(tempRot-item[5])>0.1:
+        if tempRot>item[5]:
+         self.changeVar(whichOne,1,1)
+        if tempRot<item[5]:
+         self.changeVar(whichOne,1,-1)	
+      else:
+	if abs(item[3][0])-abs(tempSpeed[0])<-0.2 or abs(item[3][1])-abs(tempSpeed[1])<-0.2:
+
+	 self.changeVar(whichOne,2,0.1)
+#	else:
+	# self.changeVar(whichOne,2,0.1)
      
 
 class updater(threading.Thread):
@@ -277,8 +285,9 @@ class updater(threading.Thread):
         while self.running:
             self.clock.tick(50)
             self.counter+=1
-	    for i in ap.items():
-    	       self.target.autopilot(i[0],i[1])
+	    if self.counter % 3==0:
+ 	     for i in ap.items():
+    	        self.target.autopilot(i[0],i[1])
             if self.counter==50:
                 self.counter=0
                 for i in self.target.stacje.keys():
@@ -337,11 +346,11 @@ class updater(threading.Thread):
 	 else:
 
 #	   debug('%s   kurwa'%(((self.target.statki[item[3][0]][1][0]-1000)**2 + (self.target.statki[item[3][0]][1][1]-1000)**2)))
- 	   if ((self.target.statki[item[3][0]][1][0]-3000)**2 + (self.target.statki[item[3][0]][1][1]-3000)**2)<1000**2:
+ 	   if ((self.target.statki[item[3][0]][1][0]-3000)**2 + (self.target.statki[item[3][0]][1][1]-3000)**2)<100**2:
 	    ap[item[3][0]]=[1000,1000]
 	    debug('aaa kurwa 1000')
 	   else:
-	    if ((self.target.statki[item[3][0]][1][0]-1000)**2 + (self.target.statki[item[3][0]][1][1]-1000)**2)<1000**2:
+	    if ((self.target.statki[item[3][0]][1][0]-1000)**2 + (self.target.statki[item[3][0]][1][1]-1000)**2)<100**2:
     	     ap[item[3][0]]=[3000,3000]
 	     debug('aaa kurwa 3000')
 	 self.target.stacje[whichOne]=item 
