@@ -253,24 +253,24 @@ class server:
      self.changeVar(whichOne,1,0)
      if item[1][0]!=whereTo[0] and item[1][1]!=whereTo[1]:
       targetRot=-(math.atan2(item[1][1]-whereTo[1],-item[1][0]+whereTo[0])-math.pi/2)
-      targetSpeed=[math.cos(targetRot),-math.sin(targetRot)]
-      tempSpeed=[targetSpeed[0]-item[3][0],targetSpeed[1]-item[3][1]]
-      tempRot=-(math.atan2(tempSpeed[1],tempSpeed[0]))
+ #     targetSpeed=[0.5*math.cos(targetRot),-0.5*math.sin(targetRot)]
+ #     tempSpeed=[targetSpeed[0]-item[3][0],targetSpeed[1]-item[3][1]]
+ #     tempRot=-(math.atan2(tempSpeed[1],-tempSpeed[0])-math.pi/2)
  #     debug("%s"%(item[3]))
 
 #	-(math.atan2(item[3][1],-item[3][0])
-      debug("%s"%tempRot)
-      if abs(tempRot-item[5])>0.1:
-        if tempRot>item[5]:
+ #     debug("%s"%tempRot)
+      if abs(targetRot-item[5])>0.2:
+        if targetRot>item[5]:
          self.changeVar(whichOne,1,1)
-        if tempRot<item[5]:
+        if targetRot<item[5]:
          self.changeVar(whichOne,1,-1)	
-      else:
-	if abs(item[3][0])-abs(tempSpeed[0])<-0.2 or abs(item[3][1])-abs(tempSpeed[1])<-0.2:
-
+      if item[3][0]**2+item[3][1]**2>0.8:
+	if not(abs(item[3][0]+0.1*math.cos(item[5]))>abs(item[3][0]) or abs(item[3][1]+0.1*math.sin(item[5]))>abs(item[3][1])):
 	 self.changeVar(whichOne,2,0.1)
-#	else:
-	# self.changeVar(whichOne,2,0.1)
+      else:
+
+	  self.changeVar(whichOne,2,0.1)
      
 
 class updater(threading.Thread):
