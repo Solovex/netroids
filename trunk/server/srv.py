@@ -247,31 +247,23 @@ class server:
 #     self.changeVar(tempId,2,0.1)
      
     def autopilot(self,whichOne,whereTo):
-     item=self.statki[whichOne]
-#     if item[3][0]**2 + item[3][1]**2 > 1:
-     self.changeVar(whichOne,2,0)
-     self.changeVar(whichOne,1,0)
-     if item[1][0]!=whereTo[0] and item[1][1]!=whereTo[1]:
-      targetRot=-(math.atan2(item[1][1]-whereTo[1],-item[1][0]+whereTo[0])-math.pi/2)
- #     targetSpeed=[0.5*math.cos(targetRot),-0.5*math.sin(targetRot)]
- #     tempSpeed=[targetSpeed[0]-item[3][0],targetSpeed[1]-item[3][1]]
- #     tempRot=-(math.atan2(tempSpeed[1],-tempSpeed[0])-math.pi/2)
- #     debug("%s"%(item[3]))
-
-#	-(math.atan2(item[3][1],-item[3][0])
- #     debug("%s"%tempRot)
-      if abs(targetRot-item[5])>0.2:
-        if targetRot>item[5]:
-         self.changeVar(whichOne,1,1)
-        if targetRot<item[5]:
-         self.changeVar(whichOne,1,-1)	
-      if item[3][0]**2+item[3][1]**2>0.8:
-	if not(abs(item[3][0]+0.1*math.cos(item[5]))>abs(item[3][0]) or abs(item[3][1]+0.1*math.sin(item[5]))>abs(item[3][1])):
-	 self.changeVar(whichOne,2,0.1)
-      else:
-
-	  self.changeVar(whichOne,2,0.1)
-     
+		item=self.statki[whichOne]
+		self.changeVar(whichOne,2,0)
+		self.changeVar(whichOne,1,0)
+		if item[1][0]!=whereTo[0] and item[1][1]!=whereTo[1]:
+			targetRot=-(math.atan2(item[1][1]-whereTo[1],-item[1][0]+whereTo[0])-math.pi/2)
+			targetSpeed=[-0.5*math.sin(targetRot),0.5*math.cos(targetRot)]
+			tempSpeed=[targetSpeed[0]-item[3][0],targetSpeed[1]-item[3][1]]
+			#tempRot=-(math.atan2(item[3][1],-item[3][0])-math.pi/2)
+			#debug(targetSpeed)
+			if abs(targetRot-item[5])>0.2:
+				if targetRot>item[5]:
+					self.changeVar(whichOne,1,1)
+				if targetRot<item[5]:
+					self.changeVar(whichOne,1,-1)	
+			if ((tempSpeed[0]**2)+(tempSpeed[1]**2)) > ((-math.cos(item[5]+math.pi/2)*0.3+tempSpeed[0])**2+(-math.sin(item[5]+math.pi/2)*0.3+tempSpeed[1])**2):
+					self.changeVar(whichOne,2,0.1)
+				
 
 class updater(threading.Thread):
     def __init__(self,target):
@@ -463,8 +455,8 @@ def debug(*text):
 asd=server()
 prz=updater(asd)
 snd=sender(prz)
-disp=cursesDisplay(asd)
-disp.start()
+#disp=cursesDisplay(asd)
+#disp.start()
 prz.start()
 snd.start()
 asd.run()
